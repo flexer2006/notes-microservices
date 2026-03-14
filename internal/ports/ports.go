@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	authv1 "github.com/flexer2006/notes-microservices/gen/auth/v1"
-	notesv1 "github.com/flexer2006/notes-microservices/gen/notes/v1"
 	"github.com/flexer2006/notes-microservices/internal/domain"
 )
 
@@ -24,36 +22,19 @@ type Cache interface {
 	Close() error
 }
 
-type AuthServiceClient interface {
-	Register(ctx context.Context, email, username, password string) (*authv1.RegisterResponse, error)
-	Login(ctx context.Context, email, password string) (*authv1.LoginResponse, error)
-	RefreshTokens(ctx context.Context, refreshToken string) (*authv1.RefreshTokensResponse, error)
-	Logout(ctx context.Context, refreshToken string) error
-	GetUserProfile(ctx context.Context) (*authv1.UserProfileResponse, error)
-}
-
-type NotesServiceClient interface {
-	CreateNote(ctx context.Context, title, content string) (*notesv1.NoteResponse, error)
-	UpdateNote(ctx context.Context, noteID string, title, content *string) (*notesv1.NoteResponse, error)
-	ListNotes(ctx context.Context, limit, offset int32) (*notesv1.ListNotesResponse, error)
-	GetNote(ctx context.Context, noteID string) (*notesv1.NoteResponse, error)
-	DeleteNote(ctx context.Context, noteID string) error
-	Close() error
-}
-
 type AuthService interface {
-	Register(ctx context.Context, req *RegisterRequest) (*TokenResponse, error)
-	Login(ctx context.Context, req *LoginRequest) (*TokenResponse, error)
-	RefreshTokens(ctx context.Context, req *RefreshRequest) (*TokenResponse, error)
-	Logout(ctx context.Context, req *LogoutRequest) error
-	GetUserProfile(ctx context.Context) (*UserProfileResponse, error)
+	Register(ctx context.Context, email, username, password string) (*domain.TokenPair, error)
+	Login(ctx context.Context, email, password string) (*domain.TokenPair, error)
+	RefreshTokens(ctx context.Context, refreshToken string) (*domain.TokenPair, error)
+	Logout(ctx context.Context, refreshToken string) error
+	GetUserProfile(ctx context.Context) (*domain.User, error)
 }
 
 type NotesService interface {
-	CreateNote(ctx context.Context, req *CreateNoteRequest) (*NoteResponse, error)
-	UpdateNote(ctx context.Context, noteID string, req *UpdateNoteRequest) (*NoteResponse, error)
-	GetNote(ctx context.Context, noteID string) (*NoteResponse, error)
-	ListNotes(ctx context.Context, limit, offset int32) (*ListNotesResponse, error)
+	CreateNote(ctx context.Context, title, content string) (*domain.Note, error)
+	UpdateNote(ctx context.Context, noteID string, title, content *string) (*domain.Note, error)
+	GetNote(ctx context.Context, noteID string) (*domain.Note, error)
+	ListNotes(ctx context.Context, limit, offset int32) ([]*domain.Note, int, error)
 	DeleteNote(ctx context.Context, noteID string) error
 }
 

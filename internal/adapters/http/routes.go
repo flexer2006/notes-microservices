@@ -1,7 +1,9 @@
 package http
 
 import (
+	"github.com/flexer2006/notes-microservices/internal/domain"
 	"github.com/flexer2006/notes-microservices/internal/ports"
+
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -29,7 +31,7 @@ func SetupRouter(app *fiber.App, authService ports.AuthService, notesService por
 	notesRoutes.Delete("/:note_id", notesHandler.DeleteNote)
 	app.Use(func(c fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "Route not found",
+			"error": domain.ErrorRouteNotFound,
 		})
 	})
 }

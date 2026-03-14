@@ -4,146 +4,136 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
+	"strconv"
 	"sync/atomic"
 
+	"github.com/flexer2006/notes-microservices/internal/domain"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-const RequestID = "request_id"
-
-type Environment string
-
 const (
-	Development Environment = "development"
-	Production  Environment = "production"
+	RequestID   = "request_id"
+	Development = "development"
+	Production  = "production"
 )
 
-type Logger struct{ l *zap.Logger }
-
-type ctxKeyType struct{}
+type (
+	Logger     struct{ *zap.Logger }
+	ctxKeyType struct{}
+)
 
 var (
 	ctxKey       = ctxKeyType{}
-	globalLogger atomic.Value
+	globalLogger atomic.Pointer[zap.Logger]
 )
 
 func init() {
 	cfg := zap.NewProductionConfig()
 	cfg.Level = zap.NewAtomicLevelAt(zapcore.WarnLevel)
-	zapLogger, _ := cfg.Build()
-	globalLogger.Store(zapLogger.With(zap.String("logger", "fallback")))
-}
-
-func NewLogger(env Environment, level string) (*Logger, error) {
-	zapLevel := parseLogLevel(level, env)
-	config := zap.NewProductionConfig()
-	if env != "production" {
-		config = zap.NewDevelopmentConfig()
-	}
-	config.Level = zap.NewAtomicLevelAt(zapLevel)
-	zapLogger, err := config.Build()
+	logger, err := cfg.Build()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize logger: %w", err)
+		globalLogger.Store(zap.NewNop())
+		return
 	}
-	return &Logger{l: zapLogger}, nil
+	globalLogger.Store(logger.Named("fallback"))
 }
 
-func parseLogLevel(level string, env Environment) zapcore.Level {
-	switch strings.ToLower(level) {
-	case "debug":
-		return zapcore.DebugLevel
-	case "info":
-		return zapcore.InfoLevel
-	case "warn", "warning":
-		return zapcore.WarnLevel
-	case "error":
-		return zapcore.ErrorLevel
-	default:
+func NewLogger(env, level string) (*Logger, error) {
+	lvl, err := zapcore.ParseLevel(level)
+	if err != nil {
 		if env == Production {
-			return zapcore.InfoLevel
+			lvl = zapcore.InfoLevel
+		} else {
+			lvl = zapcore.DebugLevel
 		}
-		return zapcore.DebugLevel
 	}
+	cfg := zap.NewProductionConfig()
+	if env != Production {
+		cfg = zap.NewDevelopmentConfig()
+	}
+	cfg.Level = zap.NewAtomicLevelAt(lvl)
+	logger, err := cfg.Build()
+	if err != nil {
+		return nil, fmt.Errorf("%s %w", domain.LogErrInitLoggerWithColon, err)
+	}
+	return new(Logger{Logger: logger}), nil
 }
 
 func SetGlobalLogger(l *Logger) {
-	if l == nil || l.l == nil {
+	if check(l) {
 		return
 	}
-	globalLogger.Store(l.l)
+	globalLogger.Store(l.Logger)
 }
 
 func Global() *Logger {
-	if v := globalLogger.Load(); v != nil {
-		if l, ok := v.(*zap.Logger); ok && l != nil {
-			return new(Logger{l: l})
-		}
+	if l := globalLogger.Load(); l != nil {
+		return new(Logger{Logger: l})
 	}
-	return new(Logger{l: zap.NewNop()})
+	return new(Logger{Logger: zap.NewNop()})
 }
 
 func Log(ctx context.Context) *Logger {
-	if ctx != nil {
-		if l, ok := ctx.Value(ctxKey).(*Logger); ok && l != nil {
-			return l
-		}
+	if ctx == nil {
+		return Global()
+	}
+	if l, ok := ctx.Value(ctxKey).(*Logger); ok && l != nil {
+		return l
 	}
 	return Global()
 }
 
-func NewContext(ctx context.Context, l *Logger) context.Context {
-	return context.WithValue(ctx, ctxKey, l)
-}
-
 func NewRequestIDContext(ctx context.Context, requestID string) context.Context {
 	if requestID == "" {
-		requestID = fmt.Sprintf("%d", os.Getpid())
+		requestID = strconv.Itoa(os.Getpid())
 	}
 	return context.WithValue(ctx, RequestID, requestID)
 }
 
-func GetRequestID(ctx context.Context) (string, bool) {
-	if ctx == nil {
-		return "", false
-	}
-	id, ok := ctx.Value(RequestID).(string)
-	return id, ok
-}
-
 func (l *Logger) With(fields ...zap.Field) *Logger {
-	return &Logger{l: l.l.With(fields...)}
+	if check(l) {
+		return l
+	}
+	return new(Logger{Logger: l.Logger.With(fields...)})
 }
 
 func (l *Logger) Info(ctx context.Context, msg string, fields ...zap.Field) {
-	fields = addRequestIDFromContext(ctx, fields)
-	l.l.Info(msg, fields...)
+	if check(l) {
+		return
+	}
+	l.Logger.Info(msg, addRequestID(ctx, fields)...)
 }
 
 func (l *Logger) Warn(ctx context.Context, msg string, fields ...zap.Field) {
-	fields = addRequestIDFromContext(ctx, fields)
-	l.l.Warn(msg, fields...)
+	if check(l) {
+		return
+	}
+	l.Logger.Warn(msg, addRequestID(ctx, fields)...)
 }
 
 func (l *Logger) Error(ctx context.Context, msg string, fields ...zap.Field) {
-	fields = addRequestIDFromContext(ctx, fields)
-	l.l.Error(msg, fields...)
+	if check(l) {
+		return
+	}
+	l.Logger.Error(msg, addRequestID(ctx, fields)...)
 }
 
 func (l *Logger) Debug(ctx context.Context, msg string, fields ...zap.Field) {
-	fields = addRequestIDFromContext(ctx, fields)
-	l.l.Debug(msg, fields...)
+	if check(l) {
+		return
+	}
+	l.Logger.Debug(msg, addRequestID(ctx, fields)...)
 }
 
 func (l *Logger) Sync() error {
-	if err := l.l.Sync(); err != nil {
-		return fmt.Errorf("failed to sync logger: %w", err)
+	if check(l) {
+		return nil
 	}
-	return nil
+	return l.Logger.Sync()
 }
 
-func addRequestIDFromContext(ctx context.Context, fields []zap.Field) []zap.Field {
+func addRequestID(ctx context.Context, fields []zap.Field) []zap.Field {
 	if ctx == nil {
 		return fields
 	}
@@ -151,4 +141,8 @@ func addRequestIDFromContext(ctx context.Context, fields []zap.Field) []zap.Fiel
 		return append(fields, zap.String(RequestID, id))
 	}
 	return fields
+}
+
+func check(l *Logger) bool {
+	return l == nil || l.Logger == nil
 }

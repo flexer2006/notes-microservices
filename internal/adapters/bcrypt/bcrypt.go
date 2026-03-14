@@ -10,13 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	errMsgFailedToGenerateHash = "failed to generate password hash"
-	errMsgErrorComparingHash   = "error comparing password with hash"
-	errMsgPasswordTooShort     = "password is too short"
-)
-
-type ServiceBcrypt struct {
+type Service struct {
 	cost int
 }
 
@@ -24,33 +18,38 @@ func NewBcrypt(cost int) ports.PasswordService {
 	if cost < bcrypt.MinCost {
 		cost = bcrypt.DefaultCost
 	}
-	return &ServiceBcrypt{cost: cost}
+	if cost > bcrypt.MaxCost {
+		cost = bcrypt.MaxCost
+	}
+	return new(Service{cost: cost})
 }
 
-func (s *ServiceBcrypt) Hash(_ context.Context, password string) (string, error) {
+func (s *Service) Hash(ctx context.Context, password string) (string, error) {
 	if password == "" {
 		return "", domain.ErrInvalidPassword
 	}
-	if len(password) < domain.MinPasswordLength {
-		return "", fmt.Errorf("%s: %w", errMsgPasswordTooShort, domain.ErrInvalidPassword)
+	if err := ctx.Err(); err != nil {
+		return "", err
 	}
-	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), s.cost)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), s.cost)
 	if err != nil {
-		return "", fmt.Errorf("%s: %w", errMsgFailedToGenerateHash, domain.ErrHashingFailed)
+		return "", fmt.Errorf("%w: %v", domain.ErrFailedToGenerateHash, err)
 	}
-	return string(hashedBytes), nil
+	return string(hashed), nil
 }
 
-func (s *ServiceBcrypt) Verify(_ context.Context, password, hash string) (bool, error) {
+func (s *Service) Verify(ctx context.Context, password, hash string) (bool, error) {
 	if password == "" || hash == "" {
 		return false, domain.ErrInvalidPassword
 	}
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	if err != nil {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			return false, nil
 		}
-		return false, fmt.Errorf("%s: %w", errMsgErrorComparingHash, err)
+		return false, fmt.Errorf("%w: %v", domain.ErrErrorComparingHash, err)
 	}
 	return true, nil
 }

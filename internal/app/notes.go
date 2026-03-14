@@ -6,30 +6,21 @@ import (
 	"time"
 
 	"github.com/flexer2006/notes-microservices/internal/domain"
+	"github.com/flexer2006/notes-microservices/internal/fault"
 	"github.com/flexer2006/notes-microservices/internal/ports"
 )
-
-func NewNote(userID, title, content string) *domain.Note {
-	now := time.Now()
-	return new(domain.Note{
-		UserID:    userID,
-		Title:     title,
-		Content:   content,
-		CreatedAt: now,
-		UpdatedAt: now,
-	})
-}
 
 type NoteUseCase struct {
 	noteRepo     ports.NoteRepository
 	tokenService ports.TokenService
 }
 
+func NewNotesService(notesClient NotesServiceClient, cache ports.Cache) ports.NotesService {
+	return new(NotesService{notesClient: notesClient, cache: cache, resilience: fault.NewServiceResilience("notes-service")})
+}
+
 func NewNoteUseCase(noteRepo ports.NoteRepository, tokenService ports.TokenService) *NoteUseCase {
-	return new(NoteUseCase{
-		noteRepo:     noteRepo,
-		tokenService: tokenService,
-	})
+	return new(NoteUseCase{noteRepo: noteRepo, tokenService: tokenService})
 }
 
 func (uc *NoteUseCase) CreateNote(ctx context.Context, token, title, content string) (string, error) {
@@ -37,10 +28,10 @@ func (uc *NoteUseCase) CreateNote(ctx context.Context, token, title, content str
 	if err != nil {
 		return "", domain.ErrUnauthorized
 	}
-	note := NewNote(userID, title, content)
+	note := new(domain.Note{UserID: userID, Title: title, Content: content, CreatedAt: time.Now(), UpdatedAt: time.Now()})
 	noteID, err := uc.noteRepo.Create(ctx, note)
 	if err != nil {
-		return "", fmt.Errorf("failed to create note: %w", err)
+		return "", fmt.Errorf("%s: %w", domain.ErrFailedToCreateNote, err)
 	}
 	return noteID, nil
 }
@@ -52,7 +43,7 @@ func (uc *NoteUseCase) GetNote(ctx context.Context, token, noteID string) (*doma
 	}
 	note, err := uc.noteRepo.GetByID(ctx, noteID, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get note: %w", err)
+		return nil, fmt.Errorf("%s: %w", domain.ErrFailedToGetNote, err)
 	}
 	if note == nil {
 		return nil, domain.ErrNotFound
@@ -73,7 +64,7 @@ func (uc *NoteUseCase) ListNotes(ctx context.Context, token string, limit, offse
 	}
 	notes, total, err := uc.noteRepo.ListByUserID(ctx, userID, limit, offset)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to list notes: %w", err)
+		return nil, 0, fmt.Errorf("%s: %w", domain.ErrFailedToListNotes, err)
 	}
 	return notes, total, nil
 }
@@ -85,7 +76,7 @@ func (uc *NoteUseCase) UpdateNote(ctx context.Context, token, noteID, title, con
 	}
 	note, err := uc.noteRepo.GetByID(ctx, noteID, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get note: %w", err)
+		return nil, fmt.Errorf("%s: %w", domain.ErrFailedToGetNote, err)
 	}
 	if note == nil {
 		return nil, domain.ErrNotFound
@@ -98,7 +89,7 @@ func (uc *NoteUseCase) UpdateNote(ctx context.Context, token, noteID, title, con
 	}
 	note.UpdatedAt = time.Now()
 	if err := uc.noteRepo.Update(ctx, note); err != nil {
-		return nil, fmt.Errorf("failed to update note: %w", err)
+		return nil, fmt.Errorf("%s: %w", domain.ErrFailedToUpdateNote, err)
 	}
 	return note, nil
 }
@@ -110,13 +101,13 @@ func (uc *NoteUseCase) DeleteNote(ctx context.Context, token, noteID string) err
 	}
 	note, err := uc.noteRepo.GetByID(ctx, noteID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to get note: %w", err)
+		return fmt.Errorf("%s: %w", domain.ErrFailedToGetNote, err)
 	}
 	if note == nil {
 		return domain.ErrNotFound
 	}
 	if err := uc.noteRepo.Delete(ctx, noteID, userID); err != nil {
-		return fmt.Errorf("failed to delete note: %w", err)
+		return fmt.Errorf("%s: %w", domain.ErrFailedToDeleteNote, err)
 	}
 	return nil
 }
