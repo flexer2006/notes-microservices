@@ -19,8 +19,7 @@ type User struct {
 }
 
 type TokenPair struct {
-	ExpiresAt time.Time
-	//nolint:gosec
+	ExpiresAt                                   time.Time
 	UserID, Username, AccessToken, RefreshToken string
 }
 
