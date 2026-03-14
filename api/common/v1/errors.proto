@@ -2,16 +2,10 @@ syntax = "proto3";
 
 package common.v1;
 
-option go_package = "gogetnote/pkg/api/common/v1;commonv1";
+option go_package = "github.com/flexer2006/notes-microservices/gen/common/v1;commonv1";
 
-// ErrorResponse определяет стандартный формат ответа с ошибкой.
 message ErrorResponse {
-  // HTTP статус-код (например, 400, 401, 403, 404, 422, 500).
   int32 status = 1;
-  
-  // Код ошибки для программной обработки.
   string code = 2;
-  
-  // Человеко-читаемое сообщение об ошибке.
   string message = 3;
 }

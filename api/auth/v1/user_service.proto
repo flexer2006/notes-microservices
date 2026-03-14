@@ -2,16 +2,13 @@ syntax = "proto3";
 
 package auth.v1;
 
-import "api/google/protobuf/timestamp.proto";
-import "api/google/protobuf/empty.proto";
-import "api/google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
 
-option go_package = "gogetnote/pkg/api/auth/v1;authv1";
+option go_package = "github.com/flexer2006/notes-microservices/gen/auth/v1;authv1";
 
-// UserService предоставляет методы для работы с профилем пользователя
 service UserService {
-  // Получение профиля текущего пользователя
-  // Идентификация происходит через токен
   rpc GetUserProfile(google.protobuf.Empty) returns (UserProfileResponse) {
     option (google.api.http) = {
       get: "/api/v1/users/me"
@@ -19,14 +16,9 @@ service UserService {
   }
 }
 
-// Ответ с информацией о пользователе
 message UserProfileResponse {
-  // ID пользователя
   string user_id = 1;
-  // Email
   string email = 2;
-  // Имя пользователя
   string username = 3;
-  // Дата регистрации
   google.protobuf.Timestamp created_at = 4;
 }

@@ -2,15 +2,13 @@ syntax = "proto3";
 
 package notes.v1;
 
-import "api/google/protobuf/timestamp.proto";
-import "api/google/protobuf/empty.proto";
-import "api/google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
 
-option go_package = "gogetnote/pkg/api/notes/v1;notesv1";
+option go_package = "github.com/flexer2006/notes-microservices/gen/notes/v1;notesv1";
 
-// NoteService предоставляет минимальный набор методов для работы с заметками
 service NoteService {
-  // CreateNote создает новую заметку
   rpc CreateNote(CreateNoteRequest) returns (NoteResponse) {
     option (google.api.http) = {
       post: "/api/v1/notes"
@@ -18,21 +16,18 @@ service NoteService {
     };
   }
 
-  // GetNote получает заметку по ID
   rpc GetNote(GetNoteRequest) returns (NoteResponse) {
     option (google.api.http) = {
       get: "/api/v1/notes/{note_id}"
     };
   }
 
-  // ListNotes получает список заметок пользователя с пагинацией
   rpc ListNotes(ListNotesRequest) returns (ListNotesResponse) {
     option (google.api.http) = {
       get: "/api/v1/notes"
     };
   }
 
-  // UpdateNote обновляет существующую заметку
   rpc UpdateNote(UpdateNoteRequest) returns (NoteResponse) {
     option (google.api.http) = {
       patch: "/api/v1/notes/{note_id}"
@@ -40,7 +35,6 @@ service NoteService {
     };
   }
 
-  // DeleteNote удаляет заметку
   rpc DeleteNote(DeleteNoteRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/api/v1/notes/{note_id}"
@@ -48,86 +42,46 @@ service NoteService {
   }
 }
 
-// Запрос на создание заметки
 message CreateNoteRequest {
-  // Заголовок заметки
   string title = 1;
-  
-  // Текст заметки
   string content = 2;
 }
 
-// Запрос на получение заметки
 message GetNoteRequest {
-  // ID заметки
   string note_id = 1;
 }
 
-// Запрос на получение списка заметок
 message ListNotesRequest {
-  // Максимальное количество элементов
   int32 limit = 1;
-  
-  // Смещение для пагинации
   int32 offset = 2;
 }
 
-// Ответ со списком заметок
 message ListNotesResponse {
-  // Список заметок
   repeated Note notes = 1;
-  
-  // Общее количество доступных элементов
   int32 total_count = 2;
-  
-  // Смещение, использованное в запросе
   int32 offset = 3;
-  
-  // Размер страницы, использованный в запросе
   int32 limit = 4;
 }
 
-// Запрос на обновление заметки
 message UpdateNoteRequest {
-  // ID заметки для обновления
   string note_id = 1;
-  
-  // Новый заголовок заметки (опционально)
   optional string title = 2;
-  
-  // Новый текст заметки (опционально)
   optional string content = 3;
 }
 
-// Запрос на удаление заметки
 message DeleteNoteRequest {
-  // ID заметки для удаления
   string note_id = 1;
 }
 
-// Структура заметки
 message Note {
-  // Уникальный идентификатор заметки
   string note_id = 1;
-  
-  // ID пользователя, создавшего заметку
   string user_id = 2;
-  
-  // Заголовок заметки
   string title = 3;
-  
-  // Текст заметки
   string content = 4;
-  
-  // Время создания
   google.protobuf.Timestamp created_at = 5;
-  
-  // Время последнего обновления
   google.protobuf.Timestamp updated_at = 6;
 }
 
-// Ответ с информацией о заметке
 message NoteResponse {
-  // Заметка
   Note note = 1;
 }

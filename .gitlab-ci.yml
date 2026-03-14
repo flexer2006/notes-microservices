@@ -1,4 +1,4 @@
-image: golang:1.24.2
+image: golang:1.26.1
 
 stages:
   - test
@@ -46,7 +46,7 @@ test:
       COVERAGE=$(go tool cover -func=coverage.txt | grep total | awk '{print substr($3, 1, length($3)-1)}')
       echo "Total selected microservice coverage: $COVERAGE%"
       if (( $(echo "$COVERAGE < $TEST_COVERAGE_THRESHOLD" | bc -l) )); then
-        echo "❌ Test coverage ($COVERAGE%) is below threshold of $TEST_COVERAGE_THRESHOLD%"
+        echo "Low coverage: $COVERAGE% (min $TEST_COVERAGE_THRESHOLD%)"
         exit 1
       fi
   only:

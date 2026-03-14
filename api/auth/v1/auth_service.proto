@@ -2,15 +2,13 @@ syntax = "proto3";
 
 package auth.v1;
 
-import "api/google/protobuf/timestamp.proto";
-import "api/google/protobuf/empty.proto";
-import "api/google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
 
-option go_package = "gogetnote/pkg/api/auth/v1;authv1";
+option go_package = "github.com/flexer2006/notes-microservices/gen/auth/v1;authv1";
 
-// AuthService предоставляет базовые методы аутентификации
 service AuthService {
-  // Регистрация нового пользователя
   rpc Register(RegisterRequest) returns (RegisterResponse) {
     option (google.api.http) = {
       post: "/api/v1/auth/register"
@@ -18,7 +16,6 @@ service AuthService {
     };
   }
 
-  // Авторизация пользователя
   rpc Login(LoginRequest) returns (LoginResponse) {
     option (google.api.http) = {
       post: "/api/v1/auth/login"
@@ -26,7 +23,6 @@ service AuthService {
     };
   }
 
-  // Обновление токена
   rpc RefreshTokens(RefreshTokensRequest) returns (RefreshTokensResponse) {
     option (google.api.http) = {
       post: "/api/v1/auth/refresh"
@@ -34,7 +30,6 @@ service AuthService {
     };
   }
 
-  // Выход из системы
   rpc Logout(LogoutRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       post: "/api/v1/auth/logout"
@@ -43,68 +38,42 @@ service AuthService {
   }
 }
 
-// Запрос на регистрацию
 message RegisterRequest {
-  // Email пользователя
   string email = 1;
-  // Имя пользователя
   string username = 2;
-  // Пароль
   string password = 3;
 }
 
-// Ответ на регистрацию
 message RegisterResponse {
-  // ID пользователя
   string user_id = 1;
-  // Токен доступа
   string access_token = 2;
-  // Токен для обновления
   string refresh_token = 3;
-  // Срок действия токена
   google.protobuf.Timestamp expires_at = 4;
 }
 
-// Запрос на вход
 message LoginRequest {
-  // Email
   string email = 1;
-  // Пароль
   string password = 2;
 }
 
-// Ответ на вход
 message LoginResponse {
-  // ID пользователя
   string user_id = 1;
-  // Имя пользователя
   string username = 2;
-  // Токен доступа
   string access_token = 3;
-  // Токен для обновления
   string refresh_token = 4;
-  // Срок действия токена
   google.protobuf.Timestamp expires_at = 5;
 }
 
-// Запрос на обновление токена
 message RefreshTokensRequest {
-  // Токен для обновления
   string refresh_token = 1;
 }
 
-// Ответ на обновление токена
 message RefreshTokensResponse {
-  // Новый токен доступа
   string access_token = 1;
-  // Новый токен для обновления
   string refresh_token = 2;
-  // Срок действия токена
   google.protobuf.Timestamp expires_at = 3;
 }
 
-// Запрос на выход
 message LogoutRequest {
-  // Токен для обновления, который нужно инвалидировать
   string refresh_token = 1;
 }

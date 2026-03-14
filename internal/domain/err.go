@@ -1,0 +1,32 @@
+package domain
+
+import "errors"
+
+var (
+	ErrEmptyUserID            = errors.New("user ID cannot be empty")
+	ErrInvalidEmail           = errors.New("invalid email format")
+	ErrEmptyUsername          = errors.New("username cannot be empty")
+	ErrPasswordTooShort       = errors.New("password must contain at least 8 characters")
+	ErrPasswordTooWeak        = errors.New("password must contain at least one letter and one digit")
+	ErrUserNotFound           = errors.New("user not found")
+	ErrInvalidCredentials     = errors.New("invalid email or password")
+	ErrEmailAlreadyExists     = errors.New("user with this email already exists")
+	ErrInvalidRefreshToken    = errors.New("invalid refresh token")
+	ErrRevokedRefreshToken    = errors.New("refresh token has been revoked")
+	ErrTokenGenerationFailed  = errors.New("failed to generate authentication tokens")
+	ErrInvalidJWTToken        = errors.New("invalid JWT token")
+	ErrExpiredJWTToken        = errors.New("JWT token has expired")
+	ErrGeneratingJWTToken     = errors.New("failed to generate JWT token")
+	ErrContextCanceled        = errors.New("context was canceled during retry")
+	ErrCircuitOpen            = errors.New("circuit breaker is open")
+	ErrMetadataNotFound       = errors.New("metadata not found in context")
+	ErrAuthHeaderNotFound     = errors.New("authorization header not found")
+	ErrInvalidAuthFormat      = errors.New("invalid authorization header format")
+	ErrNoteNotFoundOrNotOwned = errors.New("note not found or not owned by user")
+	ErrInvalidAlgorithm       = errors.New("invalid signing algorithm")
+	ErrNotFound               = errors.New("note not found")
+	ErrUnauthorized           = errors.New("unauthorized access")
+	ErrInvalidParams          = errors.New("invalid parameters")
+	ErrHashingFailed          = errors.New("failed to hash password")
+	ErrInvalidPassword        = errors.New("invalid password")
+)
