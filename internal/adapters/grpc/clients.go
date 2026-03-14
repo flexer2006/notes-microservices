@@ -59,7 +59,7 @@ func NewNotesClient(ctx context.Context, cfg *config.Config) (*NotesClient, erro
 func (c *NotesClient) CreateNote(ctx context.Context, title, content string) (*notesv1.NoteResponse, error) {
 	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodCreateNote))
 	outCtx := outgoingContextWithAuth(ctx)
-	resp, err := c.notesClient.CreateNote(outCtx, &notesv1.CreateNoteRequest{Title: title, Content: content})
+	resp, err := c.notesClient.CreateNote(outCtx, new(notesv1.CreateNoteRequest{Title: title, Content: content}))
 	if err != nil {
 		log.Error(ctx, domain.ErrorFailedToCreateNote, zap.Error(err))
 		return nil, fmt.Errorf("%s: %w", domain.ErrorFailedToCreateNote, err)
@@ -70,7 +70,7 @@ func (c *NotesClient) CreateNote(ctx context.Context, title, content string) (*n
 func (c *NotesClient) GetNote(ctx context.Context, noteID string) (*notesv1.NoteResponse, error) {
 	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodGetNote))
 	outCtx := outgoingContextWithAuth(ctx)
-	resp, err := c.notesClient.GetNote(outCtx, &notesv1.GetNoteRequest{NoteId: noteID})
+	resp, err := c.notesClient.GetNote(outCtx, new(notesv1.GetNoteRequest{NoteId: noteID}))
 	if err != nil {
 		log.Error(ctx, domain.ErrorFailedToGetNote, zap.Error(err))
 		return nil, fmt.Errorf("%s: %w", domain.ErrorFailedToGetNote, err)
@@ -81,7 +81,7 @@ func (c *NotesClient) GetNote(ctx context.Context, noteID string) (*notesv1.Note
 func (c *NotesClient) ListNotes(ctx context.Context, limit, offset int32) (*notesv1.ListNotesResponse, error) {
 	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodListNotes))
 	outCtx := outgoingContextWithAuth(ctx)
-	resp, err := c.notesClient.ListNotes(outCtx, &notesv1.ListNotesRequest{Limit: limit, Offset: offset})
+	resp, err := c.notesClient.ListNotes(outCtx, new(notesv1.ListNotesRequest{Limit: limit, Offset: offset}))
 	if err != nil {
 		log.Error(ctx, domain.ErrorFailedToListNotes, zap.Error(err))
 		return nil, fmt.Errorf("%s: %w", domain.ErrorFailedToListNotes, err)
@@ -92,7 +92,7 @@ func (c *NotesClient) ListNotes(ctx context.Context, limit, offset int32) (*note
 func (c *NotesClient) UpdateNote(ctx context.Context, noteID string, title, content *string) (*notesv1.NoteResponse, error) {
 	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodUpdateNote))
 	outCtx := outgoingContextWithAuth(ctx)
-	resp, err := c.notesClient.UpdateNote(outCtx, &notesv1.UpdateNoteRequest{NoteId: noteID, Title: title, Content: content})
+	resp, err := c.notesClient.UpdateNote(outCtx, new(notesv1.UpdateNoteRequest{NoteId: noteID, Title: title, Content: content}))
 	if err != nil {
 		log.Error(ctx, domain.ErrorFailedToUpdateNote, zap.Error(err))
 		return nil, fmt.Errorf("%s: %w", domain.ErrorFailedToUpdateNote, err)
@@ -103,7 +103,7 @@ func (c *NotesClient) UpdateNote(ctx context.Context, noteID string, title, cont
 func (c *NotesClient) DeleteNote(ctx context.Context, noteID string) error {
 	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodDeleteNote))
 	outCtx := outgoingContextWithAuth(ctx)
-	_, err := c.notesClient.DeleteNote(outCtx, &notesv1.DeleteNoteRequest{NoteId: noteID})
+	_, err := c.notesClient.DeleteNote(outCtx, new(notesv1.DeleteNoteRequest{NoteId: noteID}))
 	if err != nil {
 		log.Error(ctx, domain.ErrorFailedToDeleteNote, zap.Error(err))
 		return fmt.Errorf("%s: %w", domain.ErrorFailedToDeleteNote, err)
@@ -141,7 +141,7 @@ func NewAuthClient(ctx context.Context, cfg *config.Config) (*AuthClient, error)
 
 func (c *AuthClient) Register(ctx context.Context, email, username, password string) (*authv1.RegisterResponse, error) {
 	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodRegister))
-	resp, err := c.authClient.Register(ctx, &authv1.RegisterRequest{Email: email, Username: username, Password: password})
+	resp, err := c.authClient.Register(ctx, new(authv1.RegisterRequest{Email: email, Username: username, Password: password}))
 	if err != nil {
 		log.Error(ctx, domain.ErrorFailedToRegister, zap.Error(err))
 		return nil, fmt.Errorf("%s: %w", domain.ErrorFailedToRegister, err)
@@ -151,7 +151,7 @@ func (c *AuthClient) Register(ctx context.Context, email, username, password str
 
 func (c *AuthClient) Login(ctx context.Context, email, password string) (*authv1.LoginResponse, error) {
 	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodLogin))
-	resp, err := c.authClient.Login(ctx, &authv1.LoginRequest{Email: email, Password: password})
+	resp, err := c.authClient.Login(ctx, new(authv1.LoginRequest{Email: email, Password: password}))
 	if err != nil {
 		log.Error(ctx, domain.ErrorFailedToLogin, zap.Error(err))
 		return nil, fmt.Errorf("%s: %w", domain.ErrorFailedToLogin, err)
@@ -161,7 +161,7 @@ func (c *AuthClient) Login(ctx context.Context, email, password string) (*authv1
 
 func (c *AuthClient) RefreshTokens(ctx context.Context, refreshToken string) (*authv1.RefreshTokensResponse, error) {
 	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodRefreshTokens))
-	resp, err := c.authClient.RefreshTokens(ctx, &authv1.RefreshTokensRequest{RefreshToken: refreshToken})
+	resp, err := c.authClient.RefreshTokens(ctx, new(authv1.RefreshTokensRequest{RefreshToken: refreshToken}))
 	if err != nil {
 		log.Error(ctx, domain.ErrorFailedToRefreshTokens, zap.Error(err))
 		return nil, fmt.Errorf("%s: %w", domain.ErrorFailedToRefreshTokens, err)
@@ -171,7 +171,7 @@ func (c *AuthClient) RefreshTokens(ctx context.Context, refreshToken string) (*a
 
 func (c *AuthClient) Logout(ctx context.Context, refreshToken string) error {
 	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodLogout))
-	_, err := c.authClient.Logout(ctx, &authv1.LogoutRequest{RefreshToken: refreshToken})
+	_, err := c.authClient.Logout(ctx, new(authv1.LogoutRequest{RefreshToken: refreshToken}))
 	if err != nil {
 		log.Error(ctx, domain.ErrorFailedToLogout, zap.Error(err))
 		return fmt.Errorf("%s: %w", domain.ErrorFailedToLogout, err)
@@ -181,7 +181,7 @@ func (c *AuthClient) Logout(ctx context.Context, refreshToken string) error {
 
 func (c *AuthClient) GetUserProfile(ctx context.Context) (*authv1.UserProfileResponse, error) {
 	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodGetUserProfile))
-	resp, err := c.userClient.GetUserProfile(outgoingContextWithAuth(ctx), &emptypb.Empty{})
+	resp, err := c.userClient.GetUserProfile(outgoingContextWithAuth(ctx), new(emptypb.Empty{}))
 	if err != nil {
 		log.Error(ctx, domain.ErrorFailedToGetProfile, zap.Error(err))
 		return nil, fmt.Errorf("%s: %w", domain.ErrorFailedToGetProfile, err)

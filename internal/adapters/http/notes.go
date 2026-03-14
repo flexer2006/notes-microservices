@@ -1,6 +1,7 @@
 package http
 
 import (
+	"math"
 	"time"
 
 	"github.com/flexer2006/notes-microservices/internal/domain"
@@ -62,7 +63,14 @@ func (h *NotesHandler) CreateNote(c fiber.Ctx) error {
 		log.Error(ctx, "failed to create note", zap.Error(err))
 		return handleError(c, err)
 	}
-	return jsonResponse(c, fiber.StatusCreated, NoteResponse{Note: new(Note{ID: note.ID, UserID: note.UserID, Title: note.Title, Content: note.Content, CreatedAt: note.CreatedAt, UpdatedAt: note.UpdatedAt})})
+	return jsonResponse(c, fiber.StatusCreated, NoteResponse{Note: new(Note{
+		ID:        note.ID,
+		UserID:    note.UserID,
+		Title:     note.Title,
+		Content:   note.Content,
+		CreatedAt: note.CreatedAt,
+		UpdatedAt: note.UpdatedAt,
+	})})
 }
 
 func (h *NotesHandler) GetNote(c fiber.Ctx) error {
@@ -96,12 +104,29 @@ func (h *NotesHandler) ListNotes(c fiber.Ctx) error {
 		log.Error(ctx, domain.ErrMsgInvalidPagination)
 		return errorResponse(c, fiber.StatusBadRequest, domain.ErrMsgInvalidPagination)
 	}
-	notes, total, err := h.notesService.ListNotes(ctx, int32(limit), int32(offset))
+	limit32 := int32(math.MaxInt32)
+	if limit >= 0 && limit <= math.MaxInt32 {
+		limit32 = int32(limit)
+	}
+	offset32 := int32(math.MaxInt32)
+	if offset >= 0 && offset <= math.MaxInt32 {
+		offset32 = int32(offset)
+	}
+	notes, total, err := h.notesService.ListNotes(ctx, limit32, offset32)
 	if err != nil {
 		log.Error(ctx, "failed to list notes", zap.Error(err))
 		return handleError(c, err)
 	}
-	body := ListNotesResponse{Notes: make([]*Note, len(notes)), TotalCount: int32(total), Offset: int32(offset), Limit: int32(limit)}
+	total32 := int32(math.MaxInt32)
+	if total >= 0 && total <= math.MaxInt32 {
+		total32 = int32(total)
+	}
+	body := ListNotesResponse{
+		Notes:      make([]*Note, len(notes)),
+		TotalCount: total32,
+		Offset:     offset32,
+		Limit:      limit32,
+	}
 	for i, n := range notes {
 		body.Notes[i] = new(Note{
 			ID:        n.ID,
@@ -134,7 +159,14 @@ func (h *NotesHandler) UpdateNote(c fiber.Ctx) error {
 		log.Error(ctx, "failed to update note", zap.Error(err))
 		return handleError(c, err)
 	}
-	return jsonResponse(c, fiber.StatusOK, NoteResponse{Note: new(Note{ID: note.ID, UserID: note.UserID, Title: note.Title, Content: note.Content, CreatedAt: note.CreatedAt, UpdatedAt: note.UpdatedAt})})
+	return jsonResponse(c, fiber.StatusOK, NoteResponse{Note: new(Note{
+		ID:        note.ID,
+		UserID:    note.UserID,
+		Title:     note.Title,
+		Content:   note.Content,
+		CreatedAt: note.CreatedAt,
+		UpdatedAt: note.UpdatedAt,
+	})})
 }
 
 func (h *NotesHandler) DeleteNote(c fiber.Ctx) error {

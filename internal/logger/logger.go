@@ -88,7 +88,7 @@ func NewRequestIDContext(ctx context.Context, requestID string) context.Context 
 	if requestID == "" {
 		requestID = strconv.Itoa(os.Getpid())
 	}
-	return context.WithValue(ctx, RequestID, requestID)
+	return context.WithValue(ctx, ctxKey, requestID)
 }
 
 func (l *Logger) With(fields ...zap.Field) *Logger {
@@ -137,7 +137,7 @@ func addRequestID(ctx context.Context, fields []zap.Field) []zap.Field {
 	if ctx == nil {
 		return fields
 	}
-	if id, ok := ctx.Value(RequestID).(string); ok && id != "" {
+	if id, ok := ctx.Value(ctxKey).(string); ok && id != "" {
 		return append(fields, zap.String(RequestID, id))
 	}
 	return fields

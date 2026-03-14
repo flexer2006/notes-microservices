@@ -4,8 +4,9 @@ import "time"
 
 type Config struct {
 	Postgres *struct {
-		Host     string `yaml:"host" env:"POSTGRES_HOST" env-default:"0.0.0.0"`
-		User     string `yaml:"user" env:"POSTGRES_USER" env-default:"postgres"`
+		Host string `yaml:"host" env:"POSTGRES_HOST" env-default:"0.0.0.0"`
+		User string `yaml:"user" env:"POSTGRES_USER" env-default:"postgres"`
+		//nolint:gosec
 		Password string `yaml:"password" env:"POSTGRES_PASSWORD" env-default:"postgres"`
 		Database string `yaml:"database" env:"POSTGRES_DB" env-default:"notes"`
 		Port     int    `yaml:"port" env:"POSTGRES_PORT" env-default:"5432"`
@@ -57,7 +58,8 @@ type Config struct {
 	} `yaml:"http"`
 
 	Redis *struct {
-		Host            string        `yaml:"host" env:"REDIS_HOST" env-default:"localhost"`
+		Host string `yaml:"host" env:"REDIS_HOST" env-default:"localhost"`
+		//nolint:gosec
 		Password        string        `yaml:"password" env:"REDIS_PASSWORD" env-default:""`
 		Port            int           `yaml:"port" env:"REDIS_PORT" env-default:"6379"`
 		DB              int           `yaml:"db" env:"REDIS_DB" env-default:"0"`

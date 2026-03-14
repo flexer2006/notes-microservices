@@ -152,10 +152,10 @@ func StartGateway(ctx context.Context, configPath string) error {
 		}
 	}()
 	return Wait(ctx, time.Duration(cfg.Shutdown.Timeout)*time.Second,
-		func(ctx context.Context) error { return authClient.Close() },
-		func(ctx context.Context) error { return notesClient.Close() },
-		func(ctx context.Context) error { return redisCache.Close() },
-		func(ctx context.Context) error { return app.Shutdown() },
+		func(_ context.Context) error { return authClient.Close() },
+		func(_ context.Context) error { return notesClient.Close() },
+		func(_ context.Context) error { return redisCache.Close() },
+		func(_ context.Context) error { return app.Shutdown() },
 	)
 }
 

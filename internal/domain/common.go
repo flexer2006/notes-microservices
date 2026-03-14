@@ -12,7 +12,7 @@ const (
 	LogCircuitReject                          = "circuit breaker rejected request"
 	LogServiceRegister                        = "auth service: register user"
 	LogServiceLogin                           = "auth service: login user"
-	LogServiceTokenRefresh                    = "auth service: token refresh" // nolint:gosec
+	LogServiceTokenRefresh                    = "auth service: token refresh"
 	LogServiceLogout                          = "auth service: logout"
 	LogServiceGetProfile                      = "auth service: get user profile"
 	LogServiceCreateNote                      = "notes service: create note"
@@ -95,7 +95,7 @@ const (
 	ErrFailedLoadConfig                       = "Failed to load configuration"
 	LogHandlerRegister                        = "auth handler: register"
 	LogHandlerLogin                           = "auth handler: login"
-	LogHandlerRefreshTokens                   = "auth handler: refresh tokens" // #nosec G101
+	LogHandlerRefreshTokens                   = "auth handler: refresh tokens"
 	LogHandlerLogout                          = "auth handler: logout"
 	LogHandlerGetProfile                      = "auth handler: get profile"
 	ErrorInvalidRequest                       = "invalid request"

@@ -102,11 +102,13 @@ func (h *NoteHandler) ListNotes(ctx context.Context, req *notesv1.ListNotesReque
 	for _, n := range notes {
 		responses = append(responses, noteToProto(n))
 	}
-	totalCount := int32(total)
-	if total < 0 {
-		totalCount = 0
-	} else if total > math.MaxInt32 {
-		totalCount = int32(math.MaxInt32)
+	totalCount := int32(0)
+	if total > 0 {
+		if total > math.MaxInt32 {
+			totalCount = int32(math.MaxInt32)
+		} else {
+			totalCount = int32(total)
+		}
 	}
 	return new(notesv1.ListNotesResponse{
 		Notes:      responses,
