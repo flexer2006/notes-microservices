@@ -66,7 +66,6 @@ func Wait(ctx context.Context, timeout time.Duration, hooks ...func(context.Cont
 	defer cancel()
 	g, gctx := errgroup.WithContext(shutdownCtx)
 	for _, hook := range hooks {
-		hook := hook
 		g.Go(func() error {
 			return hook(gctx)
 		})
