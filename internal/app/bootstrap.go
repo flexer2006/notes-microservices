@@ -18,6 +18,7 @@ import (
 	dbpg "github.com/flexer2006/notes-microservices/internal/db/postgres"
 	"github.com/flexer2006/notes-microservices/internal/domain"
 	"github.com/flexer2006/notes-microservices/internal/logger"
+
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 	googlegrpc "google.golang.org/grpc"

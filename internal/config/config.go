@@ -12,21 +12,17 @@ type Config struct {
 		MinConn  int    `yaml:"min_conn" env:"POSTGRES_MIN_CONN" env-default:"1"`
 		MaxConn  int    `yaml:"max_conn" env:"POSTGRES_MAX_CONN" env-default:"10"`
 	} `yaml:"postgres"`
-
 	Logging *struct {
 		Level string `yaml:"level" env:"LOGGER_LEVEL" env-default:"info"`
 		Mode  string `yaml:"mode" env:"LOGGER_MODE" env-default:"development"`
 	} `yaml:"logging"`
-
 	Shutdown *struct {
 		Timeout int `yaml:"timeout" env:"GRACEFUL_SHUTDOWN_TIMEOUT" env-default:"5"`
 	} `yaml:"shutdown"`
-
 	GRPC *struct {
 		Host string `yaml:"host" env:"GRPC_HOST" env-default:"0.0.0.0"`
 		Port int    `yaml:"port" env:"GRPC_PORT" env-default:"50053"`
 	} `yaml:"grpc"`
-
 	GRPCClient *struct {
 		AuthService struct {
 			Host           string        `yaml:"host" env:"HOST" env-default:"0.0.0.0"`
@@ -40,14 +36,12 @@ type Config struct {
 		} `yaml:"notes_service" env-prefix:"GRPC_NOTES_"`
 		RequestTimeout time.Duration `yaml:"request_timeout" env:"GRPC_REQUEST_TIMEOUT" env-default:"5s"`
 	} `yaml:"grpc_client"`
-
 	JWT *struct {
 		SecretKey       string `yaml:"secret_key" env:"JWT_SECRET_KEY" env-default:"2hlsdwbzmv7yGxbQ4sIah/MuvvNoe889pbEzZql0SU8n3U1gYi29gZnFQKxiUdGH"`
 		AccessTokenTTL  string `yaml:"access_token_ttl" env:"JWT_ACCESS_TOKEN_TTL" env-default:"15m"`
 		RefreshTokenTTL string `yaml:"refresh_token_ttl" env:"JWT_REFRESH_TOKEN_TTL" env-default:"24h"`
 		BCryptCost      int    `yaml:"bcrypt_cost" env:"JWT_BCRYPT_COST" env-default:"10"`
 	} `yaml:"jwt"`
-
 	HTTP *struct {
 		Host            string        `yaml:"host" env:"HTTP_HOST" env-default:"0.0.0.0"`
 		Port            int           `yaml:"port" env:"HTTP_PORT" env-default:"8080"`
@@ -55,7 +49,6 @@ type Config struct {
 		WriteTimeout    time.Duration `yaml:"write_timeout" env:"HTTP_WRITE_TIMEOUT" env-default:"10s"`
 		ShutdownTimeout time.Duration `yaml:"shutdown_timeout" env:"HTTP_SHUTDOWN_TIMEOUT" env-default:"5s"`
 	} `yaml:"http"`
-
 	Redis *struct {
 		Host            string        `yaml:"host" env:"REDIS_HOST" env-default:"localhost"`
 		Password        string        `yaml:"password" env:"REDIS_PASSWORD" env-default:""`

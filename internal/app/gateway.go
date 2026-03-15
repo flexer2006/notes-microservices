@@ -24,7 +24,12 @@ func (s *AuthService) Register(ctx context.Context, email, username, password st
 			log.Error(ctx, domain.LogErrorRegisterFailed, zap.Error(err))
 			return nil, fmt.Errorf("%w: %v", domain.ErrUserRegistrationFailed, err)
 		}
-		return &domain.TokenPair{UserID: response.UserId, AccessToken: response.AccessToken, RefreshToken: response.RefreshToken, ExpiresAt: response.ExpiresAt.AsTime()}, nil
+		return new(domain.TokenPair{
+			UserID:       response.UserId,
+			AccessToken:  response.AccessToken,
+			RefreshToken: response.RefreshToken,
+			ExpiresAt:    response.ExpiresAt.AsTime(),
+		}), nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrUserRegistrationFailed, err)
@@ -41,7 +46,13 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*domai
 			log.Error(ctx, domain.LogErrorLoginFailed, zap.Error(err))
 			return nil, fmt.Errorf("%w: %v", domain.ErrLogin, err)
 		}
-		return &domain.TokenPair{UserID: response.UserId, Username: response.Username, AccessToken: response.AccessToken, RefreshToken: response.RefreshToken, ExpiresAt: response.ExpiresAt.AsTime()}, nil
+		return new(domain.TokenPair{
+			UserID:       response.UserId,
+			Username:     response.Username,
+			AccessToken:  response.AccessToken,
+			RefreshToken: response.RefreshToken,
+			ExpiresAt:    response.ExpiresAt.AsTime(),
+		}), nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrLogin, err)
@@ -58,7 +69,11 @@ func (s *AuthService) RefreshTokens(ctx context.Context, refreshToken string) (*
 			log.Error(ctx, domain.LogErrorUpdateTokensFailed, zap.Error(err))
 			return nil, fmt.Errorf("%w: %v", domain.ErrRefreshTokens, err)
 		}
-		return &domain.TokenPair{AccessToken: response.AccessToken, RefreshToken: response.RefreshToken, ExpiresAt: response.ExpiresAt.AsTime()}, nil
+		return new(domain.TokenPair{
+			AccessToken:  response.AccessToken,
+			RefreshToken: response.RefreshToken,
+			ExpiresAt:    response.ExpiresAt.AsTime(),
+		}), nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrRefreshTokens, err)
