@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
-
 	"github.com/flexer2006/notes-microservices/internal/domain"
 	"github.com/flexer2006/notes-microservices/internal/ports"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type claims struct {
@@ -25,7 +25,12 @@ type Service struct {
 }
 
 func New(secret string, accessTTL, refreshTTL time.Duration) ports.TokenService {
-	return new(Service{key: []byte(secret), accessTokenTTL: accessTTL, refreshTokenTTL: refreshTTL, parser: jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))})
+	return new(Service{
+		key:             []byte(secret),
+		accessTokenTTL:  accessTTL,
+		refreshTokenTTL: refreshTTL,
+		parser:          jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))},
+	)
 }
 
 func (s *Service) GenerateAccessToken(_ context.Context, userID, username string) (string, time.Time, error) {

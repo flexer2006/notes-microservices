@@ -18,38 +18,40 @@ type Server struct {
 	server *grpc.Server
 }
 
-func New(cfg *config.Config) *Server {
-	return new(Server{
-		cfg:    cfg,
-		server: grpc.NewServer(),
-	})
+func New(cfg *config.Config, opts ...grpc.ServerOption) *Server {
+	defaultOpts := []grpc.ServerOption{
+		grpc.UnaryInterceptor(unaryRequestIDInterceptor),
+		grpc.StreamInterceptor(streamRequestIDInterceptor),
+	}
+	defaultOpts = append(defaultOpts, opts...)
+	return new(Server{cfg: cfg, server: grpc.NewServer(defaultOpts...)})
 }
 
 func (s *Server) Start(ctx context.Context) error {
 	log := logger.Log(ctx)
 	address := net.JoinHostPort(s.cfg.GRPC.Host, fmt.Sprint(s.cfg.GRPC.Port))
-	log.Info(ctx, domain.LogServerStarting, zap.String("address", address))
+	log.Info(ctx, "Starting gRPC server", zap.String("address", address))
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Error(ctx, domain.LogErrServerStart, zap.Error(err))
-		return fmt.Errorf("%s: %w", domain.LogErrServerStart, err)
+		log.Error(ctx, domain.ErrServerStart.Error(), zap.Error(err))
+		return fmt.Errorf("%s: %w", domain.ErrServerStart.Error(), err)
 	}
 	reflection.Register(s.server)
 	go func() {
 		if err := s.server.Serve(listener); err != nil {
-			log.Error(ctx, domain.LogErrServerStart, zap.Error(err))
+			log.Error(ctx, domain.ErrServerStart.Error(), zap.Error(err))
 		}
 	}()
-	log.Info(ctx, domain.LogServerStarted, zap.String("address", address))
+	log.Info(ctx, "gRPC server started", zap.String("address", address))
 	return nil
 }
 
 func (s *Server) Stop(ctx context.Context) {
-	logger.Log(ctx).Info(ctx, domain.LogServerStopping)
+	logger.Log(ctx).Info(ctx, "Stopping gRPC server")
 	s.server.GracefulStop()
 }
 
-func (s *Server) RegisterService(registerFn func(server *grpc.Server)) {
+func (s *Server) RegisterService(registerFn func(server grpc.ServiceRegistrar)) {
 	registerFn(s.server)
 }
 

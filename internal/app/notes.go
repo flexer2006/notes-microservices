@@ -5,10 +5,25 @@ import (
 	"fmt"
 	"time"
 
+	notesv1 "github.com/flexer2006/notes-microservices/gen/notes/v1"
 	"github.com/flexer2006/notes-microservices/internal/domain"
 	"github.com/flexer2006/notes-microservices/internal/fault"
 	"github.com/flexer2006/notes-microservices/internal/ports"
 )
+
+type NotesServiceClient interface {
+	CreateNote(ctx context.Context, title, content string) (*notesv1.NoteResponse, error)
+	UpdateNote(ctx context.Context, noteID string, title, content *string) (*notesv1.NoteResponse, error)
+	ListNotes(ctx context.Context, limit, offset int32) (*notesv1.ListNotesResponse, error)
+	GetNote(ctx context.Context, noteID string) (*notesv1.NoteResponse, error)
+	DeleteNote(ctx context.Context, noteID string) error
+}
+
+type NotesService struct {
+	notesClient NotesServiceClient
+	cache       ports.Cache
+	resilience  *fault.ServiceResilience
+}
 
 type NoteUseCase struct {
 	noteRepo     ports.NoteRepository
@@ -46,7 +61,7 @@ func (uc *NoteUseCase) GetNote(ctx context.Context, token, noteID string) (*doma
 		return nil, fmt.Errorf("%s: %w", domain.ErrFailedToGetNote, err)
 	}
 	if note == nil {
-		return nil, domain.ErrNotFound
+		return nil, domain.ErrNoteNotFound
 	}
 	return note, nil
 }
@@ -79,7 +94,7 @@ func (uc *NoteUseCase) UpdateNote(ctx context.Context, token, noteID, title, con
 		return nil, fmt.Errorf("%s: %w", domain.ErrFailedToGetNote, err)
 	}
 	if note == nil {
-		return nil, domain.ErrNotFound
+		return nil, domain.ErrNoteNotFound
 	}
 	if title != "" {
 		note.Title = title
@@ -104,7 +119,7 @@ func (uc *NoteUseCase) DeleteNote(ctx context.Context, token, noteID string) err
 		return fmt.Errorf("%s: %w", domain.ErrFailedToGetNote, err)
 	}
 	if note == nil {
-		return domain.ErrNotFound
+		return domain.ErrNoteNotFound
 	}
 	if err := uc.noteRepo.Delete(ctx, noteID, userID); err != nil {
 		return fmt.Errorf("%s: %w", domain.ErrFailedToDeleteNote, err)

@@ -47,25 +47,25 @@ func NewRedisCache(ctx context.Context, cfg *config.Config) (ports.Cache, error)
 }
 
 func (c *RedisCache) Get(ctx context.Context, key string) (string, error) {
-	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodGet), zap.String("key", key))
+	log := logger.Log(ctx).With(zap.String("method", "get"), zap.String("key", key))
 	value, err := c.client.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return "", nil
 		}
-		log.Error(ctx, domain.ErrorFailedToGet, zap.Error(err))
+		log.Error(ctx, domain.ErrFailedToGet.Error(), zap.Error(err))
 		return "", fmt.Errorf("%w: %v", domain.ErrRedisGetFailed, err)
 	}
 	return value, nil
 }
 
 func (c *RedisCache) Set(ctx context.Context, key, value string, ttl time.Duration) error {
-	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodSet), zap.String("key", key))
+	log := logger.Log(ctx).With(zap.String("method", "set"), zap.String("key", key))
 	if ttl <= 0 {
 		ttl = c.defaultTTL
 	}
 	if err := c.client.Set(ctx, key, value, ttl).Err(); err != nil {
-		log.Error(ctx, domain.ErrorFailedToSet, zap.Error(err))
+		log.Error(ctx, domain.ErrFailedToSet.Error(), zap.Error(err))
 		return fmt.Errorf("%w: %v", domain.ErrRedisSetFailed, err)
 	}
 	return nil
@@ -73,7 +73,7 @@ func (c *RedisCache) Set(ctx context.Context, key, value string, ttl time.Durati
 
 func (c *RedisCache) Delete(ctx context.Context, key string) error {
 	if err := c.client.Del(ctx, key).Err(); err != nil {
-		logger.Log(ctx).With(zap.String("method", domain.LogMethodDelete), zap.String("key", key)).Error(ctx, domain.ErrorFailedToDelete, zap.Error(err))
+		logger.Log(ctx).With(zap.String("method", "delete"), zap.String("key", key)).Error(ctx, domain.ErrFailedToDelete.Error(), zap.Error(err))
 		return fmt.Errorf("%w: %v", domain.ErrRedisDeleteFailed, err)
 	}
 	return nil

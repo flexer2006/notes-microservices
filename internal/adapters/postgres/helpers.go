@@ -2,9 +2,11 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/flexer2006/notes-microservices/internal/domain"
 	"github.com/flexer2006/notes-microservices/internal/logger"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
@@ -17,7 +19,7 @@ type DB interface {
 }
 
 func repoLogger(ctx context.Context, repository, method string) *logger.Logger {
-	return logger.Log(ctx).With(zap.String("repository", repository), zap.String("method", method))
+	return logger.Method(ctx, fmt.Sprintf("%s.%s", repository, method)).With(zap.String("repository", repository))
 }
 
 func scanOne[T any](row pgx.Row, scanFn func(*T) []any) (*T, error) {

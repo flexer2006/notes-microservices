@@ -28,17 +28,3 @@ type RefreshToken struct {
 	ID, UserID, Token    string
 	IsRevoked            bool
 }
-
-type JWTConfig struct {
-	SecretKey                       []byte
-	AccessTokenTTL, RefreshTokenTTL time.Duration
-}
-
-type JWTClaims struct {
-	UserID    string    `json:"user_id"`
-	Username  string    `json:"username,omitempty"`
-	IssuedAt  time.Time `json:"iat"`
-	ExpiresAt time.Time `json:"exp"`
-}
-
-const MinPasswordLength = 8

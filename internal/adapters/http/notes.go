@@ -51,58 +51,51 @@ func NewNotesHandler(notesService ports.NotesService) *NotesHandler {
 
 func (h *NotesHandler) CreateNote(c fiber.Ctx) error {
 	ctx := userCtx(c)
-	log := logger.Log(ctx).With(zap.String("handler", "notes.Create"))
-	log.Debug(ctx, domain.LogHandlerCreateNote)
+	log := logger.Method(ctx, "notes.Create")
+	log.Debug(ctx, "handling create note request")
 	req, err := bindJSON[CreateNoteRequest](c)
 	if err != nil {
-		log.Error(ctx, domain.ErrMsgInvalidRequestBody, zap.Error(err))
-		return errorResponse(c, fiber.StatusBadRequest, domain.ErrMsgInvalidRequestBody)
+		log.Error(ctx, domain.ErrInvalidRequestBody.Error(), zap.Error(err))
+		return errorResponse(c, fiber.StatusBadRequest, domain.ErrInvalidRequestBody.Error())
 	}
 	note, err := h.notesService.CreateNote(ctx, req.Title, req.Content)
 	if err != nil {
 		log.Error(ctx, "failed to create note", zap.Error(err))
 		return handleError(c, err)
 	}
-	return jsonResponse(c, fiber.StatusCreated, NoteResponse{Note: new(Note{
-		ID:        note.ID,
-		UserID:    note.UserID,
-		Title:     note.Title,
-		Content:   note.Content,
-		CreatedAt: note.CreatedAt,
-		UpdatedAt: note.UpdatedAt,
-	})})
+	return jsonResponse(c, fiber.StatusCreated, NoteResponse{Note: noteToAPI(note)})
 }
 
 func (h *NotesHandler) GetNote(c fiber.Ctx) error {
 	ctx := userCtx(c)
-	log := logger.Log(ctx).With(zap.String("handler", "notes.Get"))
-	log.Debug(ctx, domain.LogHandlerGetNote)
+	log := logger.Method(ctx, "notes.Get")
+	log.Debug(ctx, "handling get note request")
 	noteID := c.Params("note_id")
 	if noteID == "" {
-		log.Error(ctx, domain.ErrMsgInvalidNoteID)
-		return errorResponse(c, fiber.StatusBadRequest, domain.ErrMsgInvalidNoteID)
+		log.Error(ctx, domain.ErrInvalidNoteID.Error())
+		return errorResponse(c, fiber.StatusBadRequest, domain.ErrInvalidNoteID.Error())
 	}
 	note, err := h.notesService.GetNote(ctx, noteID)
 	if err != nil {
 		log.Error(ctx, "failed to get note", zap.Error(err))
 		return handleError(c, err)
 	}
-	return jsonResponse(c, fiber.StatusOK, note)
+	return jsonResponse(c, fiber.StatusOK, noteToAPI(note))
 }
 
 func (h *NotesHandler) ListNotes(c fiber.Ctx) error {
 	ctx := userCtx(c)
-	log := logger.Log(ctx).With(zap.String("handler", "notes.List"))
-	log.Debug(ctx, domain.LogHandlerListNotes)
+	log := logger.Method(ctx, "notes.List")
+	log.Debug(ctx, "handling list notes request")
 	limit := queryInt(c, "limit", 10)
 	if limit <= 0 {
-		log.Error(ctx, domain.ErrMsgInvalidPagination)
-		return errorResponse(c, fiber.StatusBadRequest, domain.ErrMsgInvalidPagination)
+		log.Error(ctx, domain.ErrInvalidPagination.Error())
+		return errorResponse(c, fiber.StatusBadRequest, domain.ErrInvalidPagination.Error())
 	}
 	offset := queryInt(c, "offset", 0)
 	if offset < 0 {
-		log.Error(ctx, domain.ErrMsgInvalidPagination)
-		return errorResponse(c, fiber.StatusBadRequest, domain.ErrMsgInvalidPagination)
+		log.Error(ctx, domain.ErrInvalidPagination.Error())
+		return errorResponse(c, fiber.StatusBadRequest, domain.ErrInvalidPagination.Error())
 	}
 	limit32 := int32(math.MaxInt32)
 	if limit >= 0 && limit <= math.MaxInt32 {
@@ -128,31 +121,24 @@ func (h *NotesHandler) ListNotes(c fiber.Ctx) error {
 		Limit:      limit32,
 	}
 	for i, n := range notes {
-		body.Notes[i] = new(Note{
-			ID:        n.ID,
-			UserID:    n.UserID,
-			Title:     n.Title,
-			Content:   n.Content,
-			CreatedAt: n.CreatedAt,
-			UpdatedAt: n.UpdatedAt,
-		})
+		body.Notes[i] = noteToAPI(n)
 	}
 	return jsonResponse(c, fiber.StatusOK, body)
 }
 
 func (h *NotesHandler) UpdateNote(c fiber.Ctx) error {
 	ctx := userCtx(c)
-	log := logger.Log(ctx).With(zap.String("handler", "notes.Update"))
-	log.Debug(ctx, domain.LogHandlerUpdateNote)
+	log := logger.Method(ctx, "notes.Update")
+	log.Debug(ctx, "handling update note request")
 	noteID := c.Params("note_id")
 	if noteID == "" {
-		log.Error(ctx, domain.ErrMsgInvalidNoteID)
-		return errorResponse(c, fiber.StatusBadRequest, domain.ErrMsgInvalidNoteID)
+		log.Error(ctx, domain.ErrInvalidNoteID.Error())
+		return errorResponse(c, fiber.StatusBadRequest, domain.ErrInvalidNoteID.Error())
 	}
 	req, err := bindJSON[UpdateNoteRequest](c)
 	if err != nil {
-		log.Error(ctx, domain.ErrMsgInvalidRequestBody, zap.Error(err))
-		return errorResponse(c, fiber.StatusBadRequest, domain.ErrMsgInvalidRequestBody)
+		log.Error(ctx, domain.ErrInvalidRequestBody.Error(), zap.Error(err))
+		return errorResponse(c, fiber.StatusBadRequest, domain.ErrInvalidRequestBody.Error())
 	}
 	note, err := h.notesService.UpdateNote(ctx, noteID, req.Title, req.Content)
 	if err != nil {
@@ -171,12 +157,12 @@ func (h *NotesHandler) UpdateNote(c fiber.Ctx) error {
 
 func (h *NotesHandler) DeleteNote(c fiber.Ctx) error {
 	ctx := userCtx(c)
-	log := logger.Log(ctx).With(zap.String("handler", "notes.Delete"))
-	log.Debug(ctx, domain.LogHandlerDeleteNote)
+	log := logger.Method(ctx, "notes.Delete")
+	log.Debug(ctx, "handling delete note request")
 	noteID := c.Params("note_id")
 	if noteID == "" {
-		log.Error(ctx, domain.ErrMsgInvalidNoteID)
-		return errorResponse(c, fiber.StatusBadRequest, domain.ErrMsgInvalidNoteID)
+		log.Error(ctx, domain.ErrInvalidNoteID.Error())
+		return errorResponse(c, fiber.StatusBadRequest, domain.ErrInvalidNoteID.Error())
 	}
 	if err := h.notesService.DeleteNote(ctx, noteID); err != nil {
 		log.Error(ctx, "failed to delete note", zap.Error(err))

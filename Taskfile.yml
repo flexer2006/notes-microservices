@@ -10,9 +10,9 @@ tasks:
       - |
         if [ -d "{{.GO_OUT_DIR}}" ]; then
           rm -rf "{{.GO_OUT_DIR}}"
-          echo "Директория {{.GO_OUT_DIR}} очищена"
+          echo "{{.GO_OUT_DIR}} directory has been cleared"
         else
-          echo "Директория {{.GO_OUT_DIR}} не существует"
+          echo "{{.GO_OUT_DIR}} directory does not exist"
         fi
 
   deps:install:

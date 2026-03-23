@@ -1,13 +1,6 @@
-# Go-Get-Note
+# notes-microservices
 
-Лаконичный backend для заметок на Go с микросервисной архитектурой.
-
-## Что внутри
-
-- `auth` — регистрация, логин, refresh/logout, профиль.
-- `notes` — CRUD заметок.
-- `gateway` — HTTP API для клиентов.
-- Внутреннее взаимодействие сервисов: gRPC.
+Backend для заметок на Go с микросервисной архитектурой.
 
 ## Технологии
 
@@ -19,7 +12,7 @@
 - golang-migrate
 - Docker Compose
 
-## Быстрый старт (Docker)
+## Быстрый старт
 
 ```bash
 cp .env.example deploy/.env
@@ -35,8 +28,8 @@ API будет доступен на `http://localhost:80`.
 # генерация protobuf
 task proto:gen:linux
 
-go run ./cmd/auth
-go run ./cmd/notes
+go run ./cmd/auth &
+go run ./cmd/notes &
 go run ./cmd/gateway
 ```
 
@@ -58,8 +51,6 @@ go run ./cmd/gateway
 - `PATCH /api/v1/notes/{note_id}`
 - `DELETE /api/v1/notes/{note_id}`
 
-## Разработка
-
 ```bash
 go test ./...
 golangci-lint run
@@ -67,4 +58,4 @@ golangci-lint run
 
 ## Схема
 
-![architecture](docs/photo/scheme1.png)
+![architecture](scheme1.png)

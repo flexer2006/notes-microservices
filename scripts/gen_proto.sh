@@ -19,7 +19,7 @@ find "$PROTO_DIR" -name "*.proto" | grep -E 'api/(auth|notes|common)/v1' | while
          --go-grpc_out="$GO_OUT_DIR" --go-grpc_opt=module="$FULL_MODULE/$GO_OUT_DIR" \
          --grpc-gateway_out="$GO_OUT_DIR" --grpc-gateway_opt=module="$FULL_MODULE/$GO_OUT_DIR" \
          --grpc-gateway_opt=logtostderr=true \
-         -I. -I"$PROTO_DIR/.." "${extra_inc_args[@]}" "$file" || echo -e "\e[31mОшибка генерации: $file\e[0m"
+         -I. -I"$PROTO_DIR/.." "${extra_inc_args[@]}" "$file" || echo -e "\e[31mGeneration error: $file\e[0m"
 done
 if [ -n "${TEMP_DIR:-}" ]; then
   rm -rf "$TEMP_DIR"

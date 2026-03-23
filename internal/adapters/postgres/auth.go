@@ -40,17 +40,39 @@ func NewUserRepository(pool DB) ports.UserRepository {
 	return r
 }
 
+type TokenRepository struct {
+	pool DB
+}
+
+func NewTokenRepository(pool DB) ports.TokenRepository {
+	r := new(TokenRepository)
+	r.pool = pool
+	return r
+}
+
+type AuthRepositoryFactory struct {
+	userRepo  ports.UserRepository
+	tokenRepo ports.TokenRepository
+}
+
+func NewAuthRepositoryFactory(pool *pgxpool.Pool) *AuthRepositoryFactory {
+	f := new(AuthRepositoryFactory)
+	f.userRepo = NewUserRepository(pool)
+	f.tokenRepo = NewTokenRepository(pool)
+	return f
+}
+
 func (r *UserRepository) findUser(ctx context.Context, query, fieldName, fieldValue, logMethod string) (*domain.User, error) {
 	log := repoLogger(ctx, "user", logMethod)
 	row := r.pool.QueryRow(ctx, query, fieldValue)
 	user, err := scanUser(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			log.Debug(ctx, domain.LogUserNotFound, zap.String(fieldName, fieldValue))
+			log.Debug(ctx, "user not found", zap.String(fieldName, fieldValue))
 			return nil, domain.ErrUserNotFound
 		}
-		log.Error(ctx, domain.LogErrorFindingUser+fieldName, zap.Error(err))
-		return nil, fmt.Errorf(domain.ErrMsgQueryingUser+"%s: %w", fieldName, err)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return nil, fmt.Errorf("%s: %w", domain.ErrInvalidRequest.Error(), err)
 	}
 	return user, nil
 }
@@ -68,8 +90,8 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) (*domain
 	row := r.pool.QueryRow(ctx, userCreateQuery, user.Email, user.Username, user.PasswordHash)
 	createdUser, err := scanUser(row)
 	if err != nil {
-		log.Error(ctx, domain.LogErrorCreatingUser, zap.Error(err))
-		return nil, fmt.Errorf("%s: %w", domain.ErrMsgCreatingUser, err)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return nil, fmt.Errorf("%s: %w", domain.ErrInvalidRequest.Error(), err)
 	}
 	return createdUser, nil
 }
@@ -87,11 +109,11 @@ func (r *UserRepository) Update(ctx context.Context, user *domain.User) (*domain
 	updatedUser, err := scanUser(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			log.Debug(ctx, domain.LogUserNotFoundForUpdate, zap.String("id", user.ID))
+			log.Debug(ctx, "user not found for update", zap.String("id", user.ID))
 			return nil, domain.ErrUserNotFound
 		}
-		log.Error(ctx, domain.LogErrorUpdatingUser, zap.Error(err))
-		return nil, fmt.Errorf("%s: %w", domain.ErrMsgUpdatingUser, err)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return nil, fmt.Errorf("%s: %w", domain.ErrInvalidRequest.Error(), err)
 	}
 	return updatedUser, nil
 }
@@ -100,26 +122,14 @@ func (r *UserRepository) Delete(ctx context.Context, idn string) error {
 	log := repoLogger(ctx, "user", "Delete")
 	result, err := r.pool.Exec(ctx, userDeleteQuery, idn)
 	if err != nil {
-		log.Error(ctx, domain.LogErrorDeletingUser, zap.Error(err))
-		return fmt.Errorf("%s: %w", domain.ErrMsgDeletingUser, err)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return fmt.Errorf("%s: %w", domain.ErrInvalidRequest.Error(), err)
 	}
 	if result.RowsAffected() == 0 {
-		log.Debug(ctx, domain.LogUserNotFoundForDeletion, zap.String("id", idn))
+		log.Debug(ctx, "user not found for deletion", zap.String("id", idn))
 		return domain.ErrUserNotFound
 	}
 	return nil
-}
-
-type AuthRepositoryFactory struct {
-	userRepo  ports.UserRepository
-	tokenRepo ports.TokenRepository
-}
-
-func NewAuthRepositoryFactory(pool *pgxpool.Pool) *AuthRepositoryFactory {
-	f := new(AuthRepositoryFactory)
-	f.userRepo = NewUserRepository(pool)
-	f.tokenRepo = NewTokenRepository(pool)
-	return f
 }
 
 func (f *AuthRepositoryFactory) UserRepository() ports.UserRepository {
@@ -130,27 +140,17 @@ func (f *AuthRepositoryFactory) TokenRepository() ports.TokenRepository {
 	return f.tokenRepo
 }
 
-type TokenRepository struct {
-	pool DB
-}
-
-func NewTokenRepository(pool DB) ports.TokenRepository {
-	r := new(TokenRepository)
-	r.pool = pool
-	return r
-}
-
 func (r *TokenRepository) FindByToken(ctx context.Context, token string) (*domain.RefreshToken, error) {
 	log := repoLogger(ctx, "token", "FindByToken")
 	row := r.pool.QueryRow(ctx, tokenFindByTokenQuery, token)
 	refreshToken, err := scanRefreshToken(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			log.Debug(ctx, domain.LogTokenNotFound)
+			log.Debug(ctx, "token not found")
 			return nil, domain.ErrInvalidRefreshToken
 		}
-		log.Error(ctx, domain.LogErrorFindingRefreshToken, zap.Error(err))
-		return nil, fmt.Errorf("%s: %w", domain.LogErrorFindingRefreshToken, err)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return nil, fmt.Errorf("%s: %w", domain.ErrInvalidRequest.Error(), err)
 	}
 	return refreshToken, nil
 }
@@ -164,8 +164,8 @@ func (r *TokenRepository) StoreRefreshToken(ctx context.Context, token *domain.R
 		token.IsRevoked,
 	)
 	if err != nil {
-		log.Error(ctx, domain.LogErrorStoringRefreshToken, zap.Error(err))
-		return fmt.Errorf("%s: %w", domain.LogErrorStoringRefreshToken, err)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return fmt.Errorf("%s: %w", domain.ErrInvalidRequest.Error(), err)
 	}
 	return nil
 }
@@ -174,11 +174,11 @@ func (r *TokenRepository) RevokeToken(ctx context.Context, token string) error {
 	log := repoLogger(ctx, "token", "RevokeToken")
 	result, err := r.pool.Exec(ctx, tokenRevokeQuery, token)
 	if err != nil {
-		log.Error(ctx, domain.LogErrorRevokingRefreshToken, zap.Error(err))
-		return fmt.Errorf("%s: %w", domain.LogErrorRevokingRefreshToken, err)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return fmt.Errorf("%s: %w", domain.ErrInvalidRequest.Error(), err)
 	}
 	if result.RowsAffected() == 0 {
-		log.Debug(ctx, domain.LogTokenNotFoundForRevocation)
+		log.Debug(ctx, "token not found for revocation")
 		return domain.ErrInvalidRefreshToken
 	}
 	return nil
@@ -188,10 +188,10 @@ func (r *TokenRepository) CleanupExpiredTokens(ctx context.Context) error {
 	log := repoLogger(ctx, "token", "CleanupExpiredTokens")
 	result, err := r.pool.Exec(ctx, tokenCleanupQuery)
 	if err != nil {
-		log.Error(ctx, domain.LogErrorCleaningExpiredTokens, zap.Error(err))
-		return fmt.Errorf("%s: %w", domain.LogErrorCleaningExpiredTokens, err)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return fmt.Errorf("%s: %w", domain.ErrInvalidRequest.Error(), err)
 	}
-	log.Info(ctx, domain.LogExpiredTokensCleanedUp, zap.Int64("removed_count", result.RowsAffected()))
+	log.Info(ctx, "expired tokens cleaned up", zap.Int64("removed_count", result.RowsAffected()))
 	return nil
 }
 
@@ -199,15 +199,15 @@ func (r *TokenRepository) FindUserTokens(ctx context.Context, userID string) ([]
 	log := repoLogger(ctx, "token", "FindUserTokens").With(zap.String("userID", userID))
 	rows, err := r.pool.Query(ctx, tokenFindByUserQuery, userID)
 	if err != nil {
-		log.Error(ctx, domain.LogErrorQueryingUserTokens, zap.Error(err))
-		return nil, fmt.Errorf("%s: %w", domain.LogErrorQueryingUserTokens, err)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return nil, fmt.Errorf("%s: %w", domain.ErrInvalidRequest.Error(), err)
 	}
 	tokens, err := scanAll(rows, func(t *domain.RefreshToken) []any {
 		return []any{&t.ID, &t.UserID, &t.Token, &t.ExpiresAt, &t.CreatedAt, &t.IsRevoked}
 	})
 	if err != nil {
-		log.Error(ctx, domain.LogErrorScanningTokenRow, zap.Error(err))
-		return nil, fmt.Errorf("%s: %w", domain.ErrTokenRowScan, err)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return nil, fmt.Errorf("%s: %w", domain.ErrInvalidRequest.Error(), err)
 	}
 	return tokens, nil
 }
@@ -216,9 +216,9 @@ func (r *TokenRepository) RevokeAllUserTokens(ctx context.Context, userID string
 	log := repoLogger(ctx, "token", "RevokeAllUserTokens").With(zap.String("userID", userID))
 	result, err := r.pool.Exec(ctx, tokenRevokeAllByUserQuery, userID)
 	if err != nil {
-		log.Error(ctx, domain.LogErrorRevokingAllUserTokens, zap.Error(err))
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
 		return fmt.Errorf("%s: %w", domain.ErrRevokingAllUserTokens, err)
 	}
-	log.Info(ctx, domain.LogAllUserTokensRevoked, zap.Int64("count", result.RowsAffected()))
+	log.Info(ctx, "all user tokens revoked", zap.Int64("count", result.RowsAffected()))
 	return nil
 }

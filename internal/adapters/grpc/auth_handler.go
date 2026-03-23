@@ -21,27 +21,32 @@ type AuthHandler struct {
 	authv1.UnimplementedAuthServiceServer
 }
 
+type UserHandler struct {
+	tokenSvc    ports.TokenService
+	userUseCase ports.UserUseCase
+	authv1.UnimplementedUserServiceServer
+}
+
 func NewAuthHandler(authUseCase ports.AuthUseCase) *AuthHandler {
 	return new(AuthHandler{authUseCase: authUseCase})
 }
 
+func NewUserHandler(userUseCase ports.UserUseCase, tokenSvc ports.TokenService) *UserHandler {
+	return new(UserHandler{userUseCase: userUseCase, tokenSvc: tokenSvc})
+}
+
 func (h *AuthHandler) Register(ctx context.Context, req *authv1.RegisterRequest) (*authv1.RegisterResponse, error) {
-	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodRegister))
-	log.Info(ctx, domain.LogRegisterRequest,
+	log := logger.Method(ctx, "Register")
+	log.Info(ctx, "processing register request",
 		zap.String("email", req.Email),
 		zap.String("username", req.Username))
 	if req.Email == "" || req.Username == "" || req.Password == "" {
-		return nil, fmt.Errorf("%s: %w", domain.ErrInvalidRequestParamsMsg, domain.ErrInvalidRequest)
+		return nil, fmt.Errorf("%s: %w", domain.ErrInvalidRequest.Error(), domain.ErrInvalidRequest)
 	}
 	tokenPair, err := h.authUseCase.Register(ctx, req.Email, req.Username, req.Password)
 	if err != nil {
-		log.Error(ctx, fmt.Sprintf("%s: %v", domain.ErrRegisterMsg, err))
-		switch err.Error() {
-		case domain.ErrUserAlreadyExistsMsg:
-			return nil, fmt.Errorf("%s: %w", domain.ErrUserRegistrationFailedMsg, domain.ErrUserAlreadyExists)
-		default:
-			return nil, fmt.Errorf("%s: %w", domain.ErrAuthServiceErrorMsg, domain.ErrAuthServiceInternal)
-		}
+		log.Error(ctx, domain.ErrRegister.Error(), zap.Error(err))
+		return nil, authErrorFromDomain(err)
 	}
 	return new(authv1.RegisterResponse{
 		UserId:       tokenPair.UserID,
@@ -52,15 +57,15 @@ func (h *AuthHandler) Register(ctx context.Context, req *authv1.RegisterRequest)
 }
 
 func (h *AuthHandler) Login(ctx context.Context, req *authv1.LoginRequest) (*authv1.LoginResponse, error) {
-	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodLogin))
-	log.Info(ctx, domain.LogLoginRequest, zap.String("email", req.Email))
+	log := logger.Method(ctx, "Login")
+	log.Info(ctx, "processing login request", zap.String("email", req.Email))
 	if req.Email == "" || req.Password == "" {
-		return nil, fmt.Errorf("%s: %w", domain.ErrInvalidLoginParamsMsg, domain.ErrInvalidRequest)
+		return nil, fmt.Errorf("%s: %w", domain.ErrInvalidLoginParams.Error(), domain.ErrInvalidRequest)
 	}
 	tokenPair, err := h.authUseCase.Login(ctx, req.Email, req.Password)
 	if err != nil {
-		log.Error(ctx, fmt.Sprintf("%s: %v", domain.ErrLoginMsg, err))
-		return nil, fmt.Errorf("%s: %w", domain.ErrAuthenticationFailedMsg, domain.ErrInvalidCredentials)
+		log.Error(ctx, domain.ErrLogin.Error(), zap.Error(err))
+		return nil, authErrorFromDomain(err)
 	}
 	return new(authv1.LoginResponse{
 		UserId:       tokenPair.UserID,
@@ -72,15 +77,15 @@ func (h *AuthHandler) Login(ctx context.Context, req *authv1.LoginRequest) (*aut
 }
 
 func (h *AuthHandler) RefreshTokens(ctx context.Context, req *authv1.RefreshTokensRequest) (*authv1.RefreshTokensResponse, error) {
-	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodRefreshTokens))
-	log.Info(ctx, domain.LogRefreshTokenRequest)
+	log := logger.Method(ctx, "RefreshTokens")
+	log.Info(ctx, "processing refresh token request")
 	if req.RefreshToken == "" {
-		return nil, fmt.Errorf("%s: %w", domain.ErrMissingRefreshTokenMsg, domain.ErrInvalidRequest)
+		return nil, fmt.Errorf("%s: %w", domain.ErrMissingRefreshToken.Error(), domain.ErrInvalidRequest)
 	}
 	tokenPair, err := h.authUseCase.RefreshTokens(ctx, req.RefreshToken)
 	if err != nil {
-		log.Error(ctx, fmt.Sprintf("%s: %v", domain.ErrRefreshTokensMsg, err))
-		return nil, fmt.Errorf("%s: %w", domain.ErrTokenRefreshFailedMsg, domain.ErrInvalidRefreshToken)
+		log.Error(ctx, domain.ErrRefreshTokens.Error(), zap.Error(err))
+		return nil, authErrorFromDomain(err)
 	}
 	return new(authv1.RefreshTokensResponse{
 		AccessToken:  tokenPair.AccessToken,
@@ -90,18 +95,15 @@ func (h *AuthHandler) RefreshTokens(ctx context.Context, req *authv1.RefreshToke
 }
 
 func (h *AuthHandler) Logout(ctx context.Context, req *authv1.LogoutRequest) (*emptypb.Empty, error) {
-	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodLogout))
-	log.Info(ctx, domain.LogLogoutRequest)
+	log := logger.Method(ctx, "Logout")
+	log.Info(ctx, "processing logout request")
 	if req.RefreshToken == "" {
-		return nil, fmt.Errorf("%s: %w", domain.ErrMissingRefreshLogoutMsg, domain.ErrInvalidRequest)
+		return nil, fmt.Errorf("%s: %w", domain.ErrMissingRefreshToken.Error(), domain.ErrInvalidRequest)
 	}
 	err := h.authUseCase.Logout(ctx, req.RefreshToken)
 	if err != nil {
-		log.Error(ctx, fmt.Sprintf("%s: %v", domain.ErrLogoutMsg, err))
-		if errors.Is(err, domain.ErrInvalidRefreshToken) {
-			return nil, fmt.Errorf("%s: %w", domain.ErrLogoutFailedTokenMsg, domain.ErrInvalidRefreshToken)
-		}
-		return nil, fmt.Errorf("%s: %w", domain.ErrLogoutOperationFailedMsg, domain.ErrAuthServiceInternal)
+		log.Error(ctx, domain.ErrFailedToLogout.Error(), zap.Error(err))
+		return nil, authErrorFromDomain(err)
 	}
 	return new(emptypb.Empty{}), nil
 }
@@ -110,36 +112,26 @@ func (h *AuthHandler) RegisterService(server grpc.ServiceRegistrar) {
 	authv1.RegisterAuthServiceServer(server, h)
 }
 
-type UserHandler struct {
-	tokenSvc    ports.TokenService
-	userUseCase ports.UserUseCase
-	authv1.UnimplementedUserServiceServer
-}
-
-func NewUserHandler(userUseCase ports.UserUseCase, tokenSvc ports.TokenService) *UserHandler {
-	return new(UserHandler{userUseCase: userUseCase, tokenSvc: tokenSvc})
-}
-
 func (h *UserHandler) GetUserProfile(ctx context.Context, _ *emptypb.Empty) (*authv1.UserProfileResponse, error) {
-	log := logger.Log(ctx).With(zap.String("method", domain.LogMethodGetUserProfile))
-	log.Info(ctx, domain.LogGetUserProfileRequest)
+	log := logger.Method(ctx, "GetUserProfile")
+	log.Info(ctx, "processing user profile request")
 	token, err := extractBearerToken(ctx)
 	if err != nil {
-		log.Error(ctx, domain.ErrMissingUserIDMsg)
-		return nil, fmt.Errorf("%s: %w", domain.ErrUnauthorizedAccessMsg, domain.ErrMissingUserID)
+		log.Error(ctx, domain.ErrMissingUserID.Error())
+		return nil, fmt.Errorf("%s: %w", domain.ErrUnauthorized.Error(), domain.ErrMissingUserID)
 	}
 	userID, err := h.tokenSvc.ValidateAccessToken(ctx, token)
 	if err != nil {
-		log.Error(ctx, domain.LogInvalidAccessTokenMsg, zap.Error(err))
-		return nil, fmt.Errorf("%s: %w", domain.ErrUnauthorizedAccessMsg, domain.ErrMissingUserID)
+		log.Error(ctx, "invalid access token", zap.Error(err))
+		return nil, fmt.Errorf("%s: %w", domain.ErrUnauthorized.Error(), domain.ErrMissingUserID)
 	}
 	user, err := h.userUseCase.GetUserProfile(ctx, userID)
 	if err != nil {
-		log.Error(ctx, fmt.Sprintf("%s: %v", domain.ErrGetUserProfileMsg, err))
+		log.Error(ctx, domain.ErrGetUserProfile.Error(), zap.Error(err))
 		if errors.Is(err, domain.ErrUserNotFound) {
-			return nil, fmt.Errorf("%s: %w", domain.ErrProfileRetrievalFailedMsg, domain.ErrUserNotFound)
+			return nil, fmt.Errorf("%s: %w", domain.ErrProfileRetrievalFailed.Error(), domain.ErrUserNotFound)
 		}
-		return nil, fmt.Errorf("%s: %w", domain.ErrProfileRetrievalFailedMsg, domain.ErrInternalService)
+		return nil, fmt.Errorf("%s: %w", domain.ErrProfileRetrievalFailed.Error(), domain.ErrInternalService)
 	}
 	return new(authv1.UserProfileResponse{
 		UserId:    user.ID,

@@ -39,6 +39,16 @@ type Retry struct {
 	ShouldRetry    func(error) bool
 }
 
+const (
+	circuitErrorThreshold   = 5
+	circuitSuccessThreshold = 2
+	circuitTimeout          = 10 * time.Second
+	retryMaxAttempts        = 3
+	retryInitialBackoff     = 100 * time.Millisecond
+	retryMaxBackoff         = 1 * time.Second
+	retryBackoffFactor      = 2.0
+)
+
 type ServiceResilience struct {
 	serviceName    string
 	circuitBreaker *CircuitBreaker
@@ -50,18 +60,18 @@ func NewServiceResilience(serviceName string) *ServiceResilience {
 		serviceName: serviceName,
 		circuitBreaker: new(CircuitBreaker{
 			name:             serviceName,
-			ErrorThreshold:   5,
-			Timeout:          10 * time.Second,
-			SuccessThreshold: 2,
+			ErrorThreshold:   circuitErrorThreshold,
+			Timeout:          circuitTimeout,
+			SuccessThreshold: circuitSuccessThreshold,
 			state:            StateClosed,
 			lastChange:       time.Now(),
 		}),
 		retry: new(Retry{
 			name:           serviceName,
-			MaxAttempts:    3,
-			InitialBackoff: 100 * time.Millisecond,
-			MaxBackoff:     1 * time.Second,
-			BackoffFactor:  2.0,
+			MaxAttempts:    retryMaxAttempts,
+			InitialBackoff: retryInitialBackoff,
+			MaxBackoff:     retryMaxBackoff,
+			BackoffFactor:  retryBackoffFactor,
 			ShouldRetry: func(err error) bool {
 				return !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded)
 			},
@@ -92,20 +102,20 @@ func (r *Retry) Execute(ctx context.Context, operation func() error) error {
 }
 
 func (r *ServiceResilience) ExecuteWithResilience(ctx context.Context, operationName string, operation func() error) error {
-	r.log(ctx, operationName).Debug(ctx, domain.LogResilienceExecutingOperation)
+	r.log(ctx, operationName).Debug(ctx, "executing operation with resilience")
 	return r.circuitBreaker.Execute(ctx, func() error {
 		return r.retry.Execute(ctx, operation)
 	})
 }
 
 func ExecuteWithResilienceResult[T any](r *ServiceResilience, ctx context.Context, operationName string, operation func() (T, error)) (T, error) {
-	r.log(ctx, operationName).Debug(ctx, domain.LogResilienceExecutingOperationWithResult)
+	r.log(ctx, operationName).Debug(ctx, "executing operation with resilience and result")
 	var result T
 	err := r.circuitBreaker.Execute(ctx, func() error {
 		var err error
 		result, err = retryExecute(r.retry, ctx, operation)
 		if err != nil {
-			r.log(ctx, operationName).Warn(ctx, domain.LogResilienceOperationFailed, zap.Error(err))
+			r.log(ctx, operationName).Warn(ctx, "operation failed", zap.Error(err))
 		}
 		return err
 	})
@@ -120,15 +130,15 @@ func (cb *CircuitBreaker) allow(ctx context.Context) error {
 	case StateOpen:
 		switch {
 		case time.Since(cb.lastChange) <= cb.Timeout:
-			log.Info(ctx, domain.LogCircuitReject)
+			log.Info(ctx, "circuit breaker rejected request")
 			return domain.ErrCircuitOpen
 		default:
 			cb.state, cb.lastChange = StateHalfOpen, time.Now()
-			log.Info(ctx, domain.LogCircuitStateChange, zap.Int("new_state", int(StateHalfOpen)))
-			log.Info(ctx, domain.LogCircuitAllowRetry)
+			log.Info(ctx, "circuit breaker state changed", zap.Int("new_state", int(StateHalfOpen)))
+			log.Info(ctx, "circuit breaker allowing retry")
 		}
 	case StateHalfOpen:
-		log.Info(ctx, domain.LogCircuitAllowRetry)
+		log.Info(ctx, "circuit breaker allowing retry")
 	}
 	return nil
 }
@@ -155,9 +165,9 @@ func (cb *CircuitBreaker) record(ctx context.Context, err error) {
 	}
 	cb.successes++
 	if cb.state == StateHalfOpen && cb.successes >= cb.SuccessThreshold {
-		log.Info(ctx, domain.LogCircuitReset)
+		log.Info(ctx, "circuit breaker reset")
 		cb.state, cb.lastChange, cb.failures, cb.successes = StateClosed, time.Now(), 0, 0
-		log.Info(ctx, domain.LogCircuitStateChange, zap.Int("new_state", int(StateClosed)))
+		log.Info(ctx, "circuit breaker state changed", zap.Int("new_state", int(StateClosed)))
 	}
 }
 
@@ -165,29 +175,29 @@ func (cb *CircuitBreaker) trip(ctx context.Context, log *logger.Logger) {
 	if cb.state == StateOpen {
 		return
 	}
-	log.Warn(ctx, domain.LogCircuitTrip, zap.Int("failures", cb.failures))
+	log.Warn(ctx, "circuit breaker tripped", zap.Int("failures", cb.failures))
 	cb.state, cb.lastChange, cb.successes = StateOpen, time.Now(), 0
-	log.Info(ctx, domain.LogCircuitStateChange, zap.Int("new_state", int(StateOpen)))
+	log.Info(ctx, "circuit breaker state changed", zap.Int("new_state", int(StateOpen)))
 }
 
 func retryExecute[T any](r *Retry, ctx context.Context, operation func() (T, error)) (T, error) {
 	log := logger.Log(ctx).With(zap.String("retry", r.name))
-	log.Debug(ctx, domain.LogRetryOperation)
+	log.Debug(ctx, "retry operation")
 	backoff := r.InitialBackoff
 	var zero T
 	for attempt := 1; attempt <= r.MaxAttempts; attempt++ {
 		res, err := operation()
 		if err == nil || !r.ShouldRetry(err) {
 			if attempt > 1 && err == nil {
-				log.Info(ctx, domain.LogRetrySuccess, zap.Int("attempts", attempt))
+				log.Info(ctx, "retry succeeded", zap.Int("attempts", attempt))
 			}
 			return res, err
 		}
 		if attempt >= r.MaxAttempts {
-			log.Warn(ctx, domain.LogRetryMaxAttempts, zap.Int("attempts", attempt), zap.Error(err))
+			log.Warn(ctx, "retry max attempts reached", zap.Int("attempts", attempt), zap.Error(err))
 			return res, err
 		}
-		log.Info(ctx, domain.LogRetryAttempt, zap.Int("attempt", attempt), zap.Duration("backoff", backoff), zap.Error(err))
+		log.Info(ctx, "retry attempt", zap.Int("attempt", attempt), zap.Duration("backoff", backoff), zap.Error(err))
 		timer := time.NewTimer(backoff)
 		select {
 		case <-timer.C:

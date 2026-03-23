@@ -10,6 +10,7 @@ import (
 func SetupRouter(app *fiber.App, authService ports.AuthService, notesService ports.NotesService) {
 	authHandler := NewAuthHandler(authService)
 	notesHandler := NewNotesHandler(notesService)
+	app.Use(NewRequestIDMiddleware())
 	app.Use(NewLoggerMiddleware())
 	app.Use(NewRecoveryMiddleware())
 	apiV1 := app.Group("/api/v1")
@@ -31,7 +32,7 @@ func SetupRouter(app *fiber.App, authService ports.AuthService, notesService por
 	notesRoutes.Delete("/:note_id", notesHandler.DeleteNote)
 	app.Use(func(c fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": domain.ErrorRouteNotFound,
+			"error": domain.ErrRouteNotFound.Error(),
 		})
 	})
 }

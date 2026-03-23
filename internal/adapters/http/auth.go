@@ -1,7 +1,6 @@
 package http
 
 import (
-	"errors"
 	"time"
 
 	"github.com/flexer2006/notes-microservices/internal/domain"
@@ -54,24 +53,20 @@ func NewAuthHandler(authService ports.AuthService) *AuthHandler {
 
 func (h *AuthHandler) Register(c fiber.Ctx) error {
 	ctx := userCtx(c)
-	log := logger.Log(ctx).With(zap.String("handler", "auth.Register"))
-	log.Info(ctx, domain.LogHandlerRegister)
+	log := logger.Method(ctx, "auth.Register")
+	log.Info(ctx, "auth handler: register")
 	req, err := bindJSON[RegisterRequest](c)
 	if err != nil {
-		log.Error(ctx, domain.ErrorInvalidRequest, zap.Error(err))
-		return errorResponse(c, fiber.StatusBadRequest, domain.ErrorInvalidRequest)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return errorResponse(c, fiber.StatusBadRequest, domain.ErrInvalidRequest.Error())
 	}
 	if req.Email == "" || req.Username == "" || req.Password == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "email, username and password are required")
 	}
 	result, err := h.authService.Register(ctx, req.Email, req.Username, req.Password)
 	if err != nil {
-		log.Error(ctx, domain.ErrorFailedToServeRequest, zap.Error(err))
-		status := fiber.StatusInternalServerError
-		if errors.Is(err, domain.ErrUserAlreadyExists) {
-			status = fiber.StatusConflict
-		}
-		return errorResponse(c, status, err.Error())
+		log.Error(ctx, domain.ErrFailedToServeRequest.Error(), zap.Error(err))
+		return handleError(c, err)
 	}
 	return jsonResponse(c, fiber.StatusCreated, TokenResponse{
 		UserID:       result.UserID,
@@ -84,20 +79,20 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 
 func (h *AuthHandler) Login(c fiber.Ctx) error {
 	ctx := userCtx(c)
-	log := logger.Log(ctx).With(zap.String("handler", "auth.Login"))
-	log.Info(ctx, domain.LogHandlerLogin)
+	log := logger.Method(ctx, "auth.Login")
+	log.Info(ctx, "auth handler: login")
 	req, err := bindJSON[LoginRequest](c)
 	if err != nil {
-		log.Error(ctx, domain.ErrorInvalidRequest, zap.Error(err))
-		return errorResponse(c, fiber.StatusBadRequest, domain.ErrorInvalidRequest)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return errorResponse(c, fiber.StatusBadRequest, domain.ErrInvalidRequest.Error())
 	}
 	if req.Email == "" || req.Password == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "email and password are required")
 	}
 	result, err := h.authService.Login(ctx, req.Email, req.Password)
 	if err != nil {
-		log.Error(ctx, domain.ErrorFailedToServeRequest, zap.Error(err))
-		return errorResponse(c, fiber.StatusUnauthorized, err.Error())
+		log.Error(ctx, domain.ErrFailedToServeRequest.Error(), zap.Error(err))
+		return handleError(c, err)
 	}
 	return jsonResponse(c, fiber.StatusOK, TokenResponse{
 		UserID:       result.UserID,
@@ -110,20 +105,20 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 
 func (h *AuthHandler) RefreshTokens(c fiber.Ctx) error {
 	ctx := userCtx(c)
-	log := logger.Log(ctx).With(zap.String("handler", "auth.RefreshTokens"))
-	log.Info(ctx, domain.LogHandlerRefreshTokens)
+	log := logger.Method(ctx, "auth.RefreshTokens")
+	log.Info(ctx, "auth handler: refresh tokens")
 	req, err := bindJSON[RefreshRequest](c)
 	if err != nil {
-		log.Error(ctx, domain.ErrorInvalidRequest, zap.Error(err))
-		return errorResponse(c, fiber.StatusBadRequest, domain.ErrorInvalidRequest)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return errorResponse(c, fiber.StatusBadRequest, domain.ErrInvalidRequest.Error())
 	}
 	if req.RefreshToken == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "refresh token is required")
 	}
 	result, err := h.authService.RefreshTokens(ctx, req.RefreshToken)
 	if err != nil {
-		log.Error(ctx, domain.ErrorFailedToServeRequest, zap.Error(err))
-		return errorResponse(c, fiber.StatusUnauthorized, err.Error())
+		log.Error(ctx, domain.ErrFailedToServeRequest.Error(), zap.Error(err))
+		return handleError(c, err)
 	}
 	return jsonResponse(c, fiber.StatusOK, TokenResponse{
 		AccessToken:  result.AccessToken,
@@ -134,31 +129,31 @@ func (h *AuthHandler) RefreshTokens(c fiber.Ctx) error {
 
 func (h *AuthHandler) Logout(c fiber.Ctx) error {
 	ctx := userCtx(c)
-	log := logger.Log(ctx).With(zap.String("handler", "auth.Logout"))
-	log.Info(ctx, domain.LogHandlerLogout)
+	log := logger.Method(ctx, "auth.Logout")
+	log.Info(ctx, "auth handler: logout")
 	req, err := bindJSON[LogoutRequest](c)
 	if err != nil {
-		log.Error(ctx, domain.ErrorInvalidRequest, zap.Error(err))
-		return errorResponse(c, fiber.StatusBadRequest, domain.ErrorInvalidRequest)
+		log.Error(ctx, domain.ErrInvalidRequest.Error(), zap.Error(err))
+		return errorResponse(c, fiber.StatusBadRequest, domain.ErrInvalidRequest.Error())
 	}
 	if req.RefreshToken == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "refresh token is required")
 	}
 	if err := h.authService.Logout(ctx, req.RefreshToken); err != nil {
-		log.Error(ctx, domain.ErrorFailedToServeRequest, zap.Error(err))
-		return errorResponse(c, fiber.StatusInternalServerError, err.Error())
+		log.Error(ctx, domain.ErrFailedToServeRequest.Error(), zap.Error(err))
+		return handleError(c, err)
 	}
 	return jsonResponse(c, fiber.StatusOK, fiber.Map{"message": "logged out successfully"})
 }
 
 func (h *AuthHandler) GetProfile(c fiber.Ctx) error {
 	ctx := userCtx(c)
-	log := logger.Log(ctx).With(zap.String("handler", "auth.GetProfile"))
-	log.Info(ctx, domain.LogHandlerGetProfile)
+	log := logger.Method(ctx, "auth.GetProfile")
+	log.Info(ctx, "auth handler: get profile")
 	profile, err := h.authService.GetUserProfile(ctx)
 	if err != nil {
-		log.Error(ctx, domain.ErrorFailedToServeRequest, zap.Error(err))
-		return errorResponse(c, fiber.StatusUnauthorized, err.Error())
+		log.Error(ctx, domain.ErrFailedToServeRequest.Error(), zap.Error(err))
+		return handleError(c, err)
 	}
 	return jsonResponse(c, fiber.StatusOK, UserProfileResponse{
 		UserID:    profile.ID,
