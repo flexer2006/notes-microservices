@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package auth.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
+
+option go_package = "github.com/flexer2006/notes-microservices/gen/auth/v1;authv1";
+
+
+service UserService {
+  rpc GetUserProfile(google.protobuf.Empty) returns (UserProfileResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/user/profile"
+    };
+  }
+}
+
+message UserProfileResponse {
+  string user_id = 1;
+  string email = 2;
+  string username = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
