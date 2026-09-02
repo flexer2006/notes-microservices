@@ -116,15 +116,13 @@ func (s *Service) generateToken(
 	now := time.Now().UTC()
 	expiresAt := now.Add(ttl)
 	tokenClaims := claims{
-		UserID:   userID,
-		Username: username,
-		TokenUse: tokenUse,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ID:        uuid.NewString(),
-			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(expiresAt),
-			Subject:   userID,
-		},
+		UserID:    userID,
+		Username:  username,
+		TokenUse:  tokenUse,
+		ID:        uuid.NewString(),
+		IssuedAt:  jwt.NewNumericDate(now),
+		ExpiresAt: jwt.NewNumericDate(expiresAt),
+		Subject:   userID,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims)
 
